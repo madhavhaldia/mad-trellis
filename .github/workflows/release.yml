@@ -1,0 +1,108 @@
+name: Release
+
+# Tagged-release pipeline for mad-substrate. Fires on any `v*` tag push and produces
+# a signed, SBOM-accompanied GitHub Release carrying the darwin/arm64 (cooperative-
+# plane embedded) binary plus the cross-built linux amd64/arm64 binaries.
+#
+# Runs on an Apple-silicon macOS runner because the load-bearing artifact is the
+# darwin/arm64 binary (built natively, conform-gated) and the linux binaries are
+# pure-Go cross-compiles that need no C toolchain. Apple `container` is ABSENT on
+# GitHub's macOS runners, so the conform suite's container-grain rows SKIP-with-reason
+# while the worktree-grain rows run — conform still reports RESULT: GREEN, which is the
+# expected and acceptable outcome here.
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # create the GitHub Release and upload assets
+  id-token: write   # OIDC token for cosign keyless sign-blob
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout (full history for tag-based version stamping)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # `git describe --tags` (Makefile VERSION) needs tags + history
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      # Build approach: we run the Makefile targets EXPLICITLY rather than `make release`
+      # (scripts/release.sh). release.sh prepends `/opt/homebrew/bin` to PATH, which on a
+      # GitHub macOS runner would shadow the Go that actions/setup-go just installed with a
+      # (possibly older / go.mod-incompatible) Homebrew Go. The Makefile targets do not
+      # touch PATH, so they use the setup-go toolchain correctly. The ordering preserves
+      # release.sh's contract: the conform gate is load-bearing and runs BEFORE any
+      # checksum/artifact is published. `make conform` builds the darwin binary as a
+      # prerequisite and then runs the gate against it; `make build`/`build-linux` then
+      # (re)produce the shipped binaries into dist/.
+      - name: Conform gate (load-bearing — must be GREEN before any artifact)
+        run: make conform
+
+      - name: Build darwin/arm64 release binary (cooperative-plane embedded)
+        run: make build
+
+      - name: Cross-build linux binaries (amd64 + arm64, cgo-free)
+        run: make build-linux
+
+      - name: Checksums -> dist/SHA256SUMS
+        run: |
+          cd dist
+          shasum -a 256 mad-substrate mad-substrate-linux-amd64 mad-substrate-linux-arm64 > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Generate SBOM (SPDX JSON) over the repository
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          output-file: dist/mad-substrate.spdx.json
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@v3
+
+      - name: Cosign keyless sign of the checksums
+        run: |
+          cosign sign-blob --yes dist/SHA256SUMS \
+            --output-signature dist/SHA256SUMS.sig \
+            --output-certificate dist/SHA256SUMS.pem
+
+      - name: Extract release notes from CHANGELOG.md
+        id: notes
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          NOTES_FILE="${RUNNER_TEMP}/release-notes.md"
+          # Print the CHANGELOG section whose `## [...]` heading mentions this version,
+          # stopping at the next `## ` heading. Falls back to a pointer if absent.
+          if [ -f CHANGELOG.md ]; then
+            awk -v ver="$VERSION" '
+              /^## / { if (found) exit; if (index($0, ver) > 0) { found=1; next } }
+              found { print }
+            ' CHANGELOG.md > "$NOTES_FILE"
+          fi
+          if [ ! -s "$NOTES_FILE" ]; then
+            echo "See CHANGELOG.md" > "$NOTES_FILE"
+          fi
+          echo "file=$NOTES_FILE" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: ${{ steps.notes.outputs.file }}
+          # Tags with a hyphen (e.g. v0.1.0-rc1) are pre-releases.
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          files: |
+            dist/mad-substrate
+            dist/mad-substrate-linux-amd64
+            dist/mad-substrate-linux-arm64
+            dist/SHA256SUMS
+            dist/SHA256SUMS.sig
+            dist/SHA256SUMS.pem
+            dist/mad-substrate.spdx.json

@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main, integration]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: |
+          fmt="$(gofmt -l .)"
+          if [ -n "$fmt" ]; then
+            echo "These files are not gofmt-clean:"; echo "$fmt"; exit 1
+          fi
+      - name: go vet
+        run: go vet ./...
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: cgo-free build (the shipped binary must build with CGO disabled)
+        run: CGO_ENABLED=0 go build ./...
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: test (race)
+        run: CGO_ENABLED=1 go test ./... -race
+
+  conform:
+    # The executable safety gate. Container-grain rows SKIP on a runtime-less host
+    # (no Apple `container` on Linux runners); the worktree-grain rows always run.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: conform
+        run: make conform
+
+  macos:
+    # The shipped primary platform is darwin/arm64; the ubuntu jobs above never
+    # exercise it. This validates the darwin build + the conform safety gate on an
+    # Apple-silicon runner. The full -race suite runs on the Linux `test` job; the
+    # PTY-based end-to-end launch tests are sensitive to hosted-macOS-runner timing,
+    # so they are not re-run here. Container-grain conform rows SKIP-with-reason (no
+    # Apple `container` on the GitHub runner); the worktree-grain rows PASS, GREEN.
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: cgo-free build (the shipped binary must build with CGO disabled)
+        run: CGO_ENABLED=0 go build ./...
+      - name: conform (worktree-grain safety gate on darwin)
+        run: make conform

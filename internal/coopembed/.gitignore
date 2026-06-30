@@ -1,0 +1,5 @@
+# The cooperative-plane payloads staged here by `make build` are build artifacts —
+# cross-built on demand, never committed (they are large, arch-specific binaries and
+# would bloat the tree). Keep the dir itself via .gitkeep so //go:embed assets works.
+/assets/*
+!/assets/.gitkeep
