@@ -93,6 +93,21 @@ func governedLaunch(agentArg string, passArgs []string, socket string, ports int
 		logf = func(f string, a ...any) { fmt.Fprintf(os.Stderr, "mad-substrate: "+f+"\n", a...) }
 	}
 
+	// FAIL-FAST: mad-substrate governs a GIT REPOSITORY — every grain provisions a
+	// git worktree/clone and the trunk is a git ref. If cwd is not inside a repo,
+	// BLOCK here with an actionable message, BEFORE auto-starting a daemon or
+	// offering an integrator terminal — otherwise those side effects fire and the
+	// launch still fails late on the boundary provision (`git worktree add: not a
+	// git repository`), stranding a stray integrator window.
+	if !cwdInGitRepo() {
+		wd, _ := os.Getwd()
+		fmt.Fprintf(os.Stderr,
+			"mad-substrate: BLOCKED: %s is not a git repository — mad-substrate governs a git repo "+
+				"(each agent runs in its own `git worktree`). Run `git init` here, or cd into a repo; "+
+				"refusing to launch %q ungoverned\n", wd, agentArg)
+		os.Exit(launcher.BlockedExitCode)
+	}
+
 	// START-IF-ABSENT (C12): if the daemon is unreachable, attempt a bounded
 	// auto-start (shared with the shim path — both reach here). This restores the
 	// ambient UX while staying FAIL-CLOSED: if the daemon cannot be made present,

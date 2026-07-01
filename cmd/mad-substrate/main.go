@@ -78,6 +78,12 @@ func applyPerRepoRuntimeDefault() {
 // from their distinct working paths. Returns "" when cwd is not in a git repo (or
 // git is unavailable / errors) so the caller falls back to the global ~/.mad-substrate
 // default. Symlink-resolved so /var vs /private/var can't produce two runtimes.
+// cwdInGitRepo reports whether cwd is inside a git repository — the precondition
+// for provisioning ANY boundary (every grain uses a git worktree/clone; the trunk
+// is a git ref). It reuses cwdRepoIdentity's detection so the launch precheck and
+// the per-repo runtime resolver agree on what "in a repo" means.
+func cwdInGitRepo() bool { return cwdRepoIdentity() != "" }
+
 func cwdRepoIdentity() string {
 	out, err := exec.Command("git", "rev-parse", "--git-common-dir").Output()
 	if err != nil {

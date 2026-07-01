@@ -61,6 +61,15 @@ func integratorStartCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			socket = runtimecfg.SocketPath(socket)
 
+			// FAIL-FAST: the integrator reviews and merges through a git trunk, so it
+			// only makes sense inside a git repo. Refuse BEFORE wiring config or
+			// opening a terminal, rather than launching a window that then flails.
+			if !cwdInGitRepo() {
+				wd, _ := os.Getwd()
+				return fmt.Errorf("%s is not a git repository — the integrator merges through a git trunk; "+
+					"run `git init` here, or cd into a repo", wd)
+			}
+
 			// 1) Presence check: refuse a second integrator. Fail-soft — if the daemon
 			// is unreachable we cannot verify the singleton, so we WARN and continue
 			// (wiring + terminal still work; the integrator's own lease acquire is the

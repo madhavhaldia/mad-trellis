@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   status` keep reporting "running" and `recover` reclaim nothing). Inv 3.
 - The MCP stdio read loop is now cancellable: a signalled server actually exits
   instead of hanging on a blocked stdin read while only its lease was released.
+- `mad-substrate launch` and `mad-substrate integrator start` now fail fast with an
+  actionable message when run outside a git repository, instead of auto-starting
+  a daemon and opening an integrator terminal before failing late on the boundary
+  provision (`git worktree add: not a git repository`).
 
 ## [0.1.0] - 2026-06-28
 
