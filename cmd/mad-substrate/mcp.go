@@ -31,8 +31,12 @@ func mcpCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			// A termination signal or stdin EOF ends the server. The parent agent
 			// closes our stdin when it exits, which is the normal shutdown path;
-			// SIGINT/SIGTERM cover a direct kill.
-			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+			// SIGINT/SIGTERM cover a direct kill; SIGHUP covers a terminal-window
+			// close/hangup (osascript Terminal.app SIGHUPs the process group). All
+			// three route through the SAME clean-shutdown path so an integrator's
+			// presence lease is RELEASED on exit rather than stranded until its TTL
+			// lapses (Inv 3: no lock outlives its holder).
+			ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
 			defer stop()
 			logf := func(format string, args ...any) {
 				fmt.Fprintf(os.Stderr, "mad-substrate mcp: "+format+"\n", args...)

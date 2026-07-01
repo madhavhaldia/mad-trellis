@@ -209,3 +209,31 @@ func TestDivergence(t *testing.T) {
 		}
 	})
 }
+
+// TestIntegratorPidfile verifies the presence-pidfile path: it sits in the SAME
+// directory as the socket (so server and CLI agree even under an explicit
+// MAD_SOCKET), is deterministic for a given key, and is DISTINCT per pool slot.
+func TestIntegratorPidfile(t *testing.T) {
+	socket := "/tmp/rt/daemon.sock"
+	singleton := IntegratorPidfile(socket, []byte("mad-substrate:integrator:v1"))
+	if got, want := filepath.Dir(singleton), filepath.Dir(socket); got != want {
+		t.Fatalf("pidfile dir %q, want %q (must share the socket/ledger dir)", got, want)
+	}
+	if got := filepath.Base(singleton); got != "presence-mad-substrate-integrator-v1.pid" {
+		t.Fatalf("singleton pidfile name %q unexpected", got)
+	}
+	// Deterministic.
+	if again := IntegratorPidfile(socket, []byte("mad-substrate:integrator:v1")); again != singleton {
+		t.Fatalf("not deterministic: %q vs %q", again, singleton)
+	}
+	// Distinct pool slots must not collide.
+	s0 := IntegratorPidfile(socket, []byte("mad-substrate:integrator:v1:slot-0"))
+	s1 := IntegratorPidfile(socket, []byte("mad-substrate:integrator:v1:slot-1"))
+	if s0 == s1 || s0 == singleton {
+		t.Fatalf("pool slot pidfiles must be distinct: singleton=%q s0=%q s1=%q", singleton, s0, s1)
+	}
+	// A custom MAD_SOCKET directory is honored (not the runtime default).
+	if dir := filepath.Dir(IntegratorPidfile("/custom/place/x.sock", []byte("k"))); dir != "/custom/place" {
+		t.Fatalf("pidfile must share an explicit socket dir, got %q", dir)
+	}
+}

@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `mad-substrate integrator stop`: stop the running integrator on this trunk and
+  free its singleton presence lease. It finds the integrator via a pidfile the
+  MCP server writes beside the ledger, verifies the pid is really an integrator
+  (a reused pid is never signalled), and sends the SIGTERM the server handles by
+  releasing its lease; `--force` escalates to SIGKILL.
+
+### Fixed
+
+- The integrator MCP server now traps **SIGHUP** (terminal-window close/hangup),
+  so closing an integrator's terminal releases its presence lease immediately
+  instead of stranding it until the 60s TTL lapsed (which made `integrator
+  status` keep reporting "running" and `recover` reclaim nothing). Inv 3.
+- The MCP stdio read loop is now cancellable: a signalled server actually exits
+  instead of hanging on a blocked stdin read while only its lease was released.
+
 ## [0.1.0] - 2026-06-28
 
 First release. mad-substrate is a governance substrate for parallel agentic

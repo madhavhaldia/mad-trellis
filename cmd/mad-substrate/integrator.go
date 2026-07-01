@@ -3,12 +3,15 @@ package main
 import (
 	"encoding/base64"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -16,6 +19,11 @@ import (
 	"github.com/madhavhaldia/mad-substrate/internal/rpcclient"
 	"github.com/madhavhaldia/mad-substrate/internal/runtimecfg"
 )
+
+// integratorPresenceTTLHint mirrors the MCP server's integratorPresenceTTL (60s)
+// for user-facing "will auto-clear within ~Ns" messaging only. It is NOT the
+// authority (the server's TTL is) — it just keeps `stop`'s advice honest.
+const integratorPresenceTTLHint = 60
 
 // integratorLeaseKey is the FROZEN presence-lease key bytes for the singleton
 // integrator. The integrator's MCP server (`mad-substrate mcp --role integrator`,
@@ -33,7 +41,7 @@ func integratorCmd() *cobra.Command {
 			"(`mad-substrate mcp --role integrator`). It reviews builder branches and merges them through the " +
 			"gated trunk lease. Exactly one integrator runs per trunk, enforced by a singleton presence lease.",
 	}
-	cmd.AddCommand(integratorStartCmd(), integratorStatusCmd())
+	cmd.AddCommand(integratorStartCmd(), integratorStatusCmd(), integratorStopCmd())
 	return cmd
 }
 
@@ -184,21 +192,212 @@ func renderIntegratorPoolStatus(running, total int, reachable bool) string {
 // the daemon cannot be reached or the inspect call fails — the caller treats
 // that fail-soft (it never blocks starting/reporting).
 func inspectIntegrator(socket string) (held bool, holder string, reachable bool) {
+	return inspectKey(socket, base64.StdEncoding.EncodeToString([]byte(integratorLeaseKey)))
+}
+
+// inspectKey inspects any lease key (base64 on the wire) via the frozen
+// lease.inspect method. It returns (held, holder, reachable); reachable is false
+// (fail-soft) when the daemon is unreachable or the inspect fails.
+func inspectKey(socket, keyB64 string) (held bool, holder string, reachable bool) {
 	cl, err := rpcclient.Dial(socket)
 	if err != nil {
 		return false, "", false
 	}
 	defer cl.Close()
 	var info struct {
-		Exists bool   `json:"exists"`
 		Holder string `json:"holder"`
 		Held   bool   `json:"held"`
 	}
-	key := base64.StdEncoding.EncodeToString([]byte(integratorLeaseKey))
-	if err := cl.Call("lease.inspect", map[string]any{"key": key}, &info); err != nil {
+	if err := cl.Call("lease.inspect", map[string]any{"key": keyB64}, &info); err != nil {
 		return false, "", false
 	}
 	return info.Held, info.Holder, true
+}
+
+// integratorStopCmd stops the running integrator on this trunk and frees its
+// singleton presence lease. Because a lease is released ONLY by its own holder or
+// by liveness reclaim of a dead one (Inv 4 — one session never releases another's
+// lease), stop works by SIGNALLING the integrator's own MCP process: it reads the
+// pidfile that process wrote, verifies the pid is really an mad-substrate integrator
+// (so a reused pid is never signalled), and sends the SIGTERM the server handles
+// by releasing its lease. If the process is already gone, a reclaim pass frees an
+// already-expired lease; one whose TTL has not yet lapsed clears on its own.
+func integratorStopCmd() *cobra.Command {
+	var socket string
+	var force bool
+	cmd := &cobra.Command{
+		Use:   "stop",
+		Short: "Stop the running integrator and free its presence lease",
+		Long: "stop signals the running integrator's MCP server to shut down cleanly, releasing the " +
+			"singleton presence lease so a new integrator can start. It finds the process via the pidfile the " +
+			"integrator wrote beside the ledger, verifies the pid is really an mad-substrate integrator (a reused " +
+			"pid is never signalled), and sends SIGTERM — which the integrator handles by releasing its lease. " +
+			"If the process is already gone, stop runs a reclaim pass; a lease whose TTL has not yet lapsed " +
+			"clears within ~60s. --force escalates to SIGKILL if a clean stop does not release the lease.",
+		SilenceUsage: true,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			socket = runtimecfg.SocketPath(socket)
+			out := cmd.OutOrStdout()
+			acted := false
+			for _, raw := range integratorStopSlotKeys(integratorPoolSize()) {
+				b64 := base64.StdEncoding.EncodeToString(raw)
+				held, holder, reachable := inspectKey(socket, b64)
+				if !reachable {
+					fmt.Fprintln(cmd.ErrOrStderr(),
+						"warning: daemon not reachable — cannot verify or stop the integrator")
+					return nil
+				}
+				if !held {
+					continue
+				}
+				acted = true
+				stopOneIntegrator(out, socket, raw, holder, force)
+			}
+			if !acted {
+				fmt.Fprintln(out, "no integrator running")
+			}
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&socket, "socket", "", socketFlagHelp)
+	cmd.Flags().BoolVar(&force, "force", false,
+		"escalate to SIGKILL if a clean stop does not release the lease")
+	return cmd
+}
+
+// integratorStopSlotKeys returns the RAW presence-lease keys to stop: the single
+// well-known key for the default singleton (N<=1), or one key per slot for an
+// opt-in pool. Mirrors the MCP server's integratorSlotKeys (raw side).
+func integratorStopSlotKeys(n int) [][]byte {
+	if n <= 1 {
+		return [][]byte{[]byte(integratorLeaseKey)}
+	}
+	keys := make([][]byte, n)
+	for i := 0; i < n; i++ {
+		keys[i] = []byte(fmt.Sprintf("%s:slot-%d", integratorLeaseKey, i))
+	}
+	return keys
+}
+
+// stopOneIntegrator stops the integrator holding one presence slot. rawKey is the
+// raw slot key (held, per the caller's inspect); holder is its session id.
+func stopOneIntegrator(out io.Writer, socket string, rawKey []byte, holder string, force bool) {
+	b64 := base64.StdEncoding.EncodeToString(rawKey)
+	pidfile := runtimecfg.IntegratorPidfile(socket, rawKey)
+	pid, hasPid := readPidfile(pidfile)
+
+	// Process gone (no/stale pidfile, or the pid is dead): we cannot force-release
+	// another session's lease (Inv 4), but a reclaim pass frees it if its TTL has
+	// already lapsed; otherwise it self-clears shortly.
+	if !hasPid || !pidAlive(pid) {
+		_ = os.Remove(pidfile)
+		reclaimPass(socket)
+		if held, _, reachable := inspectKey(socket, b64); reachable && !held {
+			fmt.Fprintf(out, "integrator stopped (holder %s; process had already exited, lease reclaimed)\n", holder)
+		} else {
+			fmt.Fprintf(out, "integrator process already exited (holder %s); its presence lease auto-clears within ~%ds\n",
+				holder, integratorPresenceTTLHint)
+		}
+		return
+	}
+
+	// Pid-reuse guard: never signal a pid the OS has recycled for an unrelated
+	// process. If it does not look like an mad-substrate integrator, leave it alone
+	// and let the stale lease lapse at its TTL.
+	if !pidLooksLikeIntegrator(pid) {
+		_ = os.Remove(pidfile)
+		fmt.Fprintf(out, "integrator process appears to have exited (holder %s; pid %d was reused); lease auto-clears within ~%ds\n",
+			holder, pid, integratorPresenceTTLHint)
+		return
+	}
+
+	// Send the SIGTERM the integrator MCP server handles: it cancels its context,
+	// which releases the presence lease before exit (the tested clean-release path).
+	_ = syscall.Kill(pid, syscall.SIGTERM)
+	if waitReleased(socket, b64, 3*time.Second) {
+		_ = os.Remove(pidfile)
+		fmt.Fprintf(out, "stopped integrator (holder %s, pid %d); presence lease released\n", holder, pid)
+		return
+	}
+	if force {
+		_ = syscall.Kill(pid, syscall.SIGKILL)
+		// SIGKILL skips the clean release; reclaim frees the lease if its TTL lapsed.
+		reclaimPass(socket)
+		_ = os.Remove(pidfile)
+		fmt.Fprintf(out, "force-killed integrator (holder %s, pid %d); lease reclaimed if its TTL lapsed, else clears within ~%ds\n",
+			holder, pid, integratorPresenceTTLHint)
+		return
+	}
+	fmt.Fprintf(out, "signalled integrator (holder %s, pid %d) but the lease is still held; retry, or run with --force\n",
+		holder, pid)
+}
+
+// readPidfile reads a pid from path. ok is false when the file is absent or does
+// not contain a positive integer.
+func readPidfile(path string) (pid int, ok bool) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return 0, false
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(string(b)))
+	if err != nil || n <= 0 {
+		return 0, false
+	}
+	return n, true
+}
+
+// pidAlive reports whether a process with pid exists (signal 0). EPERM (exists but
+// not signal-able) also counts as alive; ESRCH means gone.
+func pidAlive(pid int) bool {
+	if pid <= 0 {
+		return false
+	}
+	err := syscall.Kill(pid, 0)
+	return err == nil || err == syscall.EPERM
+}
+
+// pidLooksLikeIntegrator best-effort verifies (via `ps`) that pid's command is an
+// mad-substrate integrator MCP server — the pid-reuse guard so stop never signals a
+// recycled pid belonging to an unrelated process. It matches "integrator" (from
+// the server's `mcp --role integrator` argv), which is specific to this process
+// type; a bare "mad-substrate" match would be too broad (it also hits the CLI
+// itself, test binaries, and editors that merely have the repo path open).
+func pidLooksLikeIntegrator(pid int) bool {
+	out, err := exec.Command("ps", "-p", strconv.Itoa(pid), "-o", "command=").Output()
+	if err != nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(string(out)), "integrator")
+}
+
+// waitReleased polls lease.inspect until the key is free (returns true) or timeout
+// elapses (false). Used to confirm a signalled integrator actually released.
+func waitReleased(socket, keyB64 string, timeout time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for {
+		if held, _, reachable := inspectKey(socket, keyB64); reachable && !held {
+			return true
+		}
+		if time.Now().After(deadline) {
+			return false
+		}
+		time.Sleep(150 * time.Millisecond)
+	}
+}
+
+// reclaimPass triggers one liveness-recovery pass (the same frozen liveness.scan
+// `mad-substrate recover` uses) so an already-expired presence lease is freed
+// immediately rather than at the next daemon sweep. Best-effort.
+func reclaimPass(socket string) {
+	cl, err := rpcclient.Dial(socket)
+	if err != nil {
+		return
+	}
+	defer cl.Close()
+	var out struct {
+		Reclaimed int `json:"reclaimed"`
+	}
+	_ = cl.Call("liveness.scan", nil, &out)
 }
 
 // integratorPresent reports whether an integrator currently holds the singleton

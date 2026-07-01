@@ -522,6 +522,10 @@ func runServe(t *testing.T, be backend, input string) []string {
 // runServeRole is runServe with an explicit role so role-gating can be exercised.
 func runServeRole(t *testing.T, be backend, role, input string) []string {
 	t.Helper()
+	// Hermetic runtime dir: a granted integrator now writes a presence pidfile
+	// beside the (resolved) ledger. Pin it to a temp dir so the suite never
+	// touches the developer's real ~/.mad-substrate.
+	t.Setenv("MAD_RUNTIME_DIR", t.TempDir())
 	var out bytes.Buffer
 	cfg := coopclient.Config{LeaseTTL: 2 * time.Second, Session: "sess-1"}
 	dial := func(coopclient.Config) (backend, error) { return be, nil }

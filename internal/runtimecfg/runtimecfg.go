@@ -122,6 +122,34 @@ func SocketSource(flagOverride string) (path, source string) {
 	return filepath.Join(dir, socketBasename), dsrc
 }
 
+// IntegratorPidfile returns the path of the pidfile a presence-holding integrator
+// MCP server writes so `mad-substrate integrator stop` can find and signal it. It
+// lives in the SAME directory as the socket/ledger (the per-repo runtime dir), so
+// the server and the CLI agree on it even under an explicit MAD_SOCKET. socketPath
+// is the resolved daemon socket (SocketPath); presenceKeyRaw is the RAW presence-
+// lease key bytes, sanitized into the filename so an opt-in integrator pool's slots
+// get DISTINCT pidfiles. It creates nothing (pure path derivation).
+func IntegratorPidfile(socketPath string, presenceKeyRaw []byte) string {
+	return filepath.Join(filepath.Dir(socketPath), "presence-"+sanitizeForFilename(string(presenceKeyRaw))+".pid")
+}
+
+// sanitizeForFilename maps every byte that is not [A-Za-z0-9-_] to '-' so an opaque
+// lease key becomes a safe, stable filename component. It is deterministic and
+// collision-free for the fixed integrator key set (v1 + v1:slot-N).
+func sanitizeForFilename(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9', r == '-', r == '_':
+			b.WriteRune(r)
+		default:
+			b.WriteByte('-')
+		}
+	}
+	return b.String()
+}
+
 // Divergence reports whether BOTH MAD_RUNTIME_DIR and MAD_HOME are
 // set (trimmed non-empty) AND differ — an ambiguous configuration where a process
 // that resolves via MAD_HOME and one that resolves via MAD_RUNTIME_DIR

@@ -243,6 +243,12 @@ type server struct {
 	// the specific slot key this integrator acquired.
 	presenceKey string
 
+	// presencePidfile is the path of the pidfile this server wrote when it
+	// acquired presence (empty if none). `integrator stop` reads it to find and
+	// signal this process; the renew loop / shutdown remove it on release. Guarded
+	// by mu (written by acquireIntegratorPresence, cleared on removal).
+	presencePidfile string
+
 	out io.Writer
 }
 
@@ -260,27 +266,49 @@ type rpcConn interface {
 // write/read failure.
 func (s *server) readLoop(ctx context.Context, in io.Reader) error {
 	br := bufio.NewReaderSize(in, 64<<10)
+
+	// Read in a separate goroutine so a ctx-cancel (SIGINT/SIGTERM/SIGHUP) unblocks
+	// us even while the stdin read is PARKED waiting for the next line. Checking
+	// ctx.Done() only between reads (the old shape) left the process hung on a
+	// blocking read until the agent host closed the stream — so a signalled
+	// integrator released its presence lease (separate goroutine) but never exited.
+	// The reader goroutine may stay blocked on that final read; that is fine, the
+	// process is tearing down. Dispatch stays single-threaded: only this loop calls
+	// handleLine.
+	type lineRead struct {
+		line []byte
+		err  error
+	}
+	reads := make(chan lineRead, 1)
+	go func() {
+		for {
+			line, err := readLine(br, maxLine)
+			reads <- lineRead{line, err}
+			if err != nil {
+				return
+			}
+		}
+	}()
+
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		default:
-		}
-
-		line, err := readLine(br, maxLine)
-		if len(line) > 0 {
-			if wErr := s.handleLine(line); wErr != nil {
-				return wErr
+		case r := <-reads:
+			if len(r.line) > 0 {
+				if wErr := s.handleLine(r.line); wErr != nil {
+					return wErr
+				}
 			}
-		}
-		if err != nil {
-			if err == io.EOF {
+			if r.err != nil {
+				if r.err == io.EOF {
+					return nil
+				}
+				// A too-long line or a read error ends the session; the agent host
+				// owns the stream lifecycle. Log and stop rather than spin.
+				s.logf("mcp: read: %v", r.err)
 				return nil
 			}
-			// A too-long line or a read error ends the session; the agent host
-			// owns the stream lifecycle. Log and stop rather than spin.
-			s.logf("mcp: read: %v", err)
-			return nil
 		}
 	}
 }
@@ -426,6 +454,10 @@ func (s *server) renewAll() {
 // shutdown is the best-effort teardown: release every claimed lease and close
 // the connection. It is idempotent and never panics.
 func (s *server) shutdown() {
+	// Belt-and-suspenders: the presence renew loop removes the pidfile on ctx-
+	// cancel, but shutdown also runs on the fail-soft/refused paths — clear it here
+	// too so a stale pidfile never outlives this process.
+	s.removePresencePidfile()
 	s.mu.Lock()
 	be := s.be
 	claims := make([]string, 0, len(s.claimed))
@@ -554,6 +586,10 @@ func (s *server) acquireIntegratorPresence() error {
 		if granted {
 			// We hold this slot; renew it for the session lifetime.
 			s.presenceKey = key
+			// Record our pid beside the ledger so `integrator stop` can find and
+			// signal this exact process (best-effort; a write failure just means
+			// stop falls back to the TTL reclaim).
+			s.writePresencePidfile(key)
 			return nil
 		}
 		lastHolder = holder
@@ -587,6 +623,9 @@ func (s *server) presenceRenewLoop(ctx context.Context) {
 			if be := s.backendOrRedial(); be != nil {
 				_, _ = be.Release(key)
 			}
+			// Our presence is gone: drop the pidfile so a subsequent `integrator
+			// stop` never signals a pid we no longer own.
+			s.removePresencePidfile()
 			return
 		case <-t.C:
 			be := s.backendOrRedial()
@@ -599,6 +638,39 @@ func (s *server) presenceRenewLoop(ctx context.Context) {
 				_, _, _, _ = be.Acquire(key, integratorPresenceTTL)
 			}
 		}
+	}
+}
+
+// writePresencePidfile records THIS integrator MCP server's OS pid in a pidfile
+// beside the ledger so `mad-substrate integrator stop` can find and SIGTERM it (the
+// signal the server handles by releasing its presence lease — the tested clean-
+// release path). keyB64 is the base64 presence slot key this server holds. Best-
+// effort: any failure is logged and ignored, leaving stop to fall back to the TTL
+// reclaim. Removed by removePresencePidfile on release/shutdown.
+func (s *server) writePresencePidfile(keyB64 string) {
+	raw, err := base64.StdEncoding.DecodeString(keyB64)
+	if err != nil {
+		return
+	}
+	path := runtimecfg.IntegratorPidfile(runtimecfg.SocketPath(""), raw)
+	if err := os.WriteFile(path, []byte(strconv.Itoa(os.Getpid())+"\n"), 0o600); err != nil {
+		s.logf("mcp: could not write integrator pidfile %s: %v", path, err)
+		return
+	}
+	s.mu.Lock()
+	s.presencePidfile = path
+	s.mu.Unlock()
+}
+
+// removePresencePidfile deletes the pidfile written by writePresencePidfile, if
+// any. Idempotent and best-effort — a missing file is not an error.
+func (s *server) removePresencePidfile() {
+	s.mu.Lock()
+	path := s.presencePidfile
+	s.presencePidfile = ""
+	s.mu.Unlock()
+	if path != "" {
+		_ = os.Remove(path)
 	}
 }
 
