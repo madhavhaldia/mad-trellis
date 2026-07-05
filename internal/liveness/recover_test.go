@@ -12,6 +12,7 @@ package liveness
 //   no-dispatch (frees, never resumes)   → TestLivenessNeverSpawns
 
 import (
+	"encoding/json"
 	"errors"
 	"os/exec"
 	"path/filepath"
@@ -110,6 +111,47 @@ func TestReclaimExpiredLease(t *testing.T) {
 	if res, _ := l.Acquire(key, "new-B", time.Minute); !res.Granted {
 		t.Fatal("after reclaim the lease must be re-acquirable")
 	}
+}
+
+func TestReclaimedAuditPayloadIncludesLeaseKey(t *testing.T) {
+	clk := &manualClock{t: time.Unix(1_700_000_000, 0)}
+	l := openLedger(t, "", clk)
+	key := []byte("mad-substrate:singular:v1:db")
+	if res, _ := l.Acquire(key, "dead-A", 100*time.Millisecond); !res.Granted {
+		t.Fatal("setup acquire must grant")
+	}
+	clk.advance(250 * time.Millisecond)
+
+	var audits []struct {
+		Session string
+		Kind    string
+		Payload []byte
+	}
+	r, _ := New(realReclaimer{l}, nil, nil, nil, func(session, kind string, payload []byte) {
+		audits = append(audits, struct {
+			Session string
+			Kind    string
+			Payload []byte
+		}{Session: session, Kind: kind, Payload: append([]byte(nil), payload...)})
+	})
+	if rep, err := r.Scan(); err != nil || rep.Reclaimed != 1 {
+		t.Fatalf("scan: rep=%+v err=%v", rep, err)
+	}
+
+	for _, rec := range audits {
+		if rec.Kind != "liveness.reclaimed" {
+			continue
+		}
+		var payload map[string]string
+		if err := json.Unmarshal(rec.Payload, &payload); err != nil {
+			t.Fatalf("unmarshal liveness.reclaimed payload: %v", err)
+		}
+		if payload["holder"] != "dead-A" || payload["key"] != string(key) {
+			t.Fatalf("liveness.reclaimed payload = %v, want holder and key", payload)
+		}
+		return
+	}
+	t.Fatalf("missing liveness.reclaimed audit in %+v", audits)
 }
 
 // NO-FALSE-POSITIVE — the cardinal hazard. TWO independent layers:

@@ -180,7 +180,7 @@ func (r *Recoverer) Scan() (Report, error) {
 		}
 		if reclaimed {
 			rep.Reclaimed++
-			r.audit(prior, "liveness.reclaimed", jpayload(`{"holder":%q}`, prior))
+			r.audit(prior, "liveness.reclaimed", jpayload(`{"holder":%q,"key":%q}`, prior, string(e.Key)))
 			if prior != "" && len(r.trunkKey) > 0 && bytes.Equal(e.Key, r.trunkKey) {
 				trunkDead[prior] = true
 			}

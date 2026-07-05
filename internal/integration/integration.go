@@ -17,6 +17,7 @@
 package integration
 
 import (
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -45,14 +46,23 @@ var (
 // surface exposes. It is constructed once and hosted in the single arbiter daemon
 // (Inv 5), so the single-writer store needs no cross-process coordination.
 type Integration struct {
-	store *store
+	store                   *store
+	holdsIntegratorPresence func(session string) bool
+	audit                   AuditFunc
 }
 
 // Options configures an Integration.
 type Options struct {
-	StorePath string // request-ledger DB path ("" → in-memory)
-	Clock     Clock  // nil → systemClock
+	StorePath               string                    // request-ledger DB path ("" → in-memory)
+	Clock                   Clock                     // nil → systemClock
+	HoldsIntegratorPresence func(session string) bool // nil → no session has integrator presence
+	Audit                   AuditFunc                 // nil → no-op
 }
+
+// AuditFunc emits a decision-audit record through the daemon's audit sink.
+// Append failures are intentionally outside this package; callers install a
+// best-effort wrapper.
+type AuditFunc func(session, kind string, payload []byte)
 
 // New constructs an Integration, opening (creating if needed) its durable store.
 // The caller closes it with Close.
@@ -61,7 +71,15 @@ func New(opts Options) (*Integration, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Integration{store: st}, nil
+	holds := opts.HoldsIntegratorPresence
+	if holds == nil {
+		holds = func(string) bool { return false }
+	}
+	audit := opts.Audit
+	if audit == nil {
+		audit = func(string, string, []byte) {}
+	}
+	return &Integration{store: st, holdsIntegratorPresence: holds, audit: audit}, nil
 }
 
 // Close releases the durable store.
@@ -77,7 +95,16 @@ func (ig *Integration) Request(session, branch, title string) (Record, error) {
 	if !validRef(branch) {
 		return Record{}, ErrInvalidBranch
 	}
-	return ig.store.upsertRequest(branch, title, session)
+	rec, err := ig.store.upsertRequest(branch, title, session)
+	if err != nil {
+		return Record{}, err
+	}
+	ig.appendEventBestEffort("integrator", "integration.requested", rec.Branch)
+	ig.auditBestEffort(session, "integration.requested", map[string]string{
+		"branch": rec.Branch,
+		"title":  truncateRunes(rec.Title, 120),
+	})
+	return rec, nil
 }
 
 // Pending lists every request still in `requested` (the integrator's work
@@ -101,6 +128,14 @@ func (ig *Integration) Claim(session, branch string) (ok bool, rec Record, err e
 		return false, cur, gerr
 	}
 	cur, _, gerr := ig.store.get(branch)
+	if gerr != nil {
+		return false, Record{}, gerr
+	}
+	ig.appendEventBestEffort(branchAudience(cur.Branch), "integration.claimed", cur.Branch)
+	ig.auditBestEffort(session, "integration.claimed", map[string]string{
+		"branch":  cur.Branch,
+		"claimer": session,
+	})
 	return true, cur, gerr
 }
 
@@ -121,6 +156,11 @@ func (ig *Integration) Verdict(session, branch, decision, feedback, merge string
 			return false, "", err
 		}
 		if ok {
+			ig.appendEventBestEffort(branchAudience(branch), "integration.verdict", branch)
+			ig.auditBestEffort(session, "integration.approved", map[string]string{
+				"branch": branch,
+				"merge":  merge,
+			})
 			return true, StateApproved, nil
 		}
 	case "reject":
@@ -132,6 +172,11 @@ func (ig *Integration) Verdict(session, branch, decision, feedback, merge string
 			return false, "", err
 		}
 		if ok {
+			ig.appendEventBestEffort(branchAudience(branch), "integration.verdict", branch)
+			ig.auditBestEffort(session, "integration.changes_requested", map[string]string{
+				"branch":   branch,
+				"feedback": truncateRunes(feedback, 200),
+			})
 			return true, StateChangesRequested, nil
 		}
 	default:
@@ -157,8 +202,13 @@ func (ig *Integration) Status(branch string) (Record, bool, error) {
 // terminal `withdrawn` state, clearing it from the integrator's queue. ok=false
 // (not an error) when the row is absent or already in a terminal/verdict state —
 // a cancel never clobbers a landed approve/reject.
-func (ig *Integration) Cancel(branch string) (bool, error) {
-	return ig.store.cancel(branch)
+func (ig *Integration) Cancel(session, branch string) (bool, error) {
+	ok, err := ig.store.cancel(branch)
+	if err != nil || !ok {
+		return ok, err
+	}
+	ig.auditBestEffort(session, "integration.withdrawn", map[string]string{"branch": branch})
+	return true, nil
 }
 
 // ReclaimStaleClaims reverts every `claimed` row whose claimer is dead (per
@@ -166,7 +216,15 @@ func (ig *Integration) Cancel(branch string) (bool, error) {
 // the count reverted. A live claimer is never reclaimed. This is the liveness
 // sweep's hook: a crashed integrator no longer strands a record in `claimed`.
 func (ig *Integration) ReclaimStaleClaims(isDead func(session string) bool) (int, error) {
-	return ig.store.reclaimStaleClaims(isDead)
+	recs, err := ig.store.reclaimStaleClaimRecords(isDead)
+	if err != nil {
+		return len(recs), err
+	}
+	for _, rec := range recs {
+		ig.appendEventBestEffort("integrator", "integration.requeued", rec.Branch)
+		ig.auditBestEffort("", "integration.requeued", map[string]string{"branch": rec.Branch})
+	}
+	return len(recs), nil
 }
 
 // GCStale garbage-collects aged-out records using the package default retentions:
@@ -183,6 +241,30 @@ func (ig *Integration) GCStale() (int, error) {
 // watch surface's whole-queue view).
 func (ig *Integration) List() ([]Record, error) {
 	return ig.store.list()
+}
+
+// Events returns wake-up events for session with read-and-advance cursor
+// semantics. A consumer with no cursor starts at 0 and replays every authorized
+// event still present inside the event GC window; durable request rows remain
+// the recovery authority if a wake-up is missed.
+func (ig *Integration) Events(session, branch string, max int) ([]Event, error) {
+	return ig.store.pollEvents(session, branch, max, func(ev Event) bool {
+		return ig.authorizedForEvent(session, ev)
+	})
+}
+
+func (ig *Integration) authorizedForEvent(session string, ev Event) bool {
+	if ev.Audience == "integrator" {
+		return ig.holdsIntegratorPresence(session)
+	}
+	branch, ok := branchFromAudience(ev.Audience)
+	if !ok || branch != ev.Branch {
+		return false
+	}
+	if branch == "nm/"+session {
+		return true
+	}
+	return ev.Holder == session
 }
 
 // validRef reports whether s is a safe boundary-branch ref: non-empty, not
@@ -203,4 +285,27 @@ func validRef(s string) bool {
 		}
 	}
 	return true
+}
+
+func (ig *Integration) appendEventBestEffort(audience, kind, branch string) {
+	_ = ig.store.appendEvent(audience, kind, branch)
+}
+
+func (ig *Integration) auditBestEffort(session, kind string, payload map[string]string) {
+	b, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+	ig.audit(session, kind, b)
+}
+
+func truncateRunes(s string, max int) string {
+	if max <= 0 {
+		return ""
+	}
+	runes := []rune(s)
+	if len(runes) <= max {
+		return s
+	}
+	return string(runes[:max])
 }

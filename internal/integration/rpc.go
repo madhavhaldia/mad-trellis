@@ -25,6 +25,7 @@ func Register(reg *daemon.Registry, ig *Integration) error {
 		{"integration.status", statusHandler(ig)},
 		{"integration.cancel", cancelHandler(ig)},
 		{"integration.list", listHandler(ig)},
+		{"integration.events", eventsHandler(ig)},
 	} {
 		if err := reg.Register(m.name, m.h); err != nil {
 			return err
@@ -162,7 +163,7 @@ func statusHandler(ig *Integration) daemon.Handler {
 // queue. ok=false (not an error) when the row is absent or already terminal. The
 // holder is NOT read from params (Inv 4); cancel is gated by the state predicate.
 func cancelHandler(ig *Integration) daemon.Handler {
-	return func(_ *daemon.CallContext, params json.RawMessage) (json.RawMessage, *protocol.Error) {
+	return func(cc *daemon.CallContext, params json.RawMessage) (json.RawMessage, *protocol.Error) {
 		var in struct {
 			ID string `json:"id"`
 		}
@@ -172,11 +173,42 @@ func cancelHandler(ig *Integration) daemon.Handler {
 		if in.ID == "" {
 			return nil, protocol.NewError(protocol.CodeInvalidParams, "id required")
 		}
-		ok, err := ig.Cancel(in.ID)
+		ok, err := ig.Cancel(string(cc.Session), in.ID)
 		if err != nil {
 			return nil, protocol.NewError(protocol.CodeInternal, err.Error())
 		}
 		return result(map[string]any{"ok": ok}), nil
+	}
+}
+
+// integration.events — params {"branch"?: string, "max"?: int} ->
+// {"events":[{id,kind,branch,created_at_ms}...]}. Events are daemon-authored
+// wake-ups only; request/verdict rows remain the truth. The consumer is the
+// connection-bound cc.Session. A new consumer has no cursor row and starts at 0,
+// replaying every authorized event still inside the GC window.
+func eventsHandler(ig *Integration) daemon.Handler {
+	return func(cc *daemon.CallContext, params json.RawMessage) (json.RawMessage, *protocol.Error) {
+		var in struct {
+			Branch string `json:"branch"`
+			Max    int    `json:"max"`
+		}
+		if perr := decode(params, &in); perr != nil {
+			return nil, perr
+		}
+		events, err := ig.Events(string(cc.Session), in.Branch, in.Max)
+		if err != nil {
+			return nil, protocol.NewError(protocol.CodeInternal, err.Error())
+		}
+		out := make([]map[string]any, 0, len(events))
+		for _, ev := range events {
+			out = append(out, map[string]any{
+				"id":            ev.ID,
+				"kind":          ev.Kind,
+				"branch":        ev.Branch,
+				"created_at_ms": ev.CreatedAt.UnixMilli(),
+			})
+		}
+		return result(map[string]any{"events": out}), nil
 	}
 }
 

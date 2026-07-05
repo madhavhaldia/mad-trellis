@@ -12,6 +12,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/madhavhaldia/mad-substrate/internal/daemon"
@@ -168,7 +169,21 @@ func Build(cfg Config) (d *daemon.Daemon, closeAll func() error, err error) {
 	// session (Inv 4) on every mutation. It is constructed BEFORE the Recoverer so
 	// the liveness sweep can revert a review request stranded in `claimed` by a dead
 	// integrator (a crashed claimer no longer strands a request forever).
-	ign, err := integration.New(integration.Options{StorePath: integrationStorePath(cfg)})
+	ign, err := integration.New(integration.Options{
+		StorePath: integrationStorePath(cfg),
+		HoldsIntegratorPresence: func(session string) bool {
+			return holdsIntegratorPresence(l, session)
+		},
+		Audit: func(session, kind string, payload []byte) {
+			_ = sink.Append(daemon.AuditRecord{
+				Timestamp:       time.Now(),
+				Session:         daemon.SessionID(session),
+				DecisionProject: "integration-review",
+				DecisionKind:    kind,
+				Payload:         payload,
+			})
+		},
+	})
 	if err != nil {
 		_ = itg.Close()
 		_ = l.Close()
@@ -329,6 +344,25 @@ func (a integClaimReclaimer) ReclaimStaleClaims(isDead func(session string) bool
 // abandoned requests) by their own TTL each liveness scan, so the record store does
 // not grow without bound. Not death-gated and never touches a `claimed` row.
 func (a integClaimReclaimer) GCStale() (int, error) { return a.ig.GCStale() }
+
+const integratorPresenceKey = "mad-substrate:integrator:v1"
+
+func holdsIntegratorPresence(l *lease.Ledger, session string) bool {
+	holders, err := l.ListHolders()
+	if err != nil {
+		return false
+	}
+	for _, h := range holders {
+		if h.Holder != session {
+			continue
+		}
+		key := string(h.Key)
+		if key == integratorPresenceKey || strings.HasPrefix(key, integratorPresenceKey+":slot-") {
+			return true
+		}
+	}
+	return false
+}
 
 // ledgerLabel renders a ledger path for the unusable-ledger error message. An
 // empty/":memory:" path (the in-memory test/dev ledger) is named explicitly so

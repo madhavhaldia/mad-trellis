@@ -97,7 +97,7 @@ func openStore(path string, clock Clock) (*store, error) {
 func (s *store) close() error { return s.db.Close() }
 
 func (s *store) migrate() error {
-	_, err := s.db.Exec(`
+	if _, err := s.db.Exec(`
 CREATE TABLE IF NOT EXISTS integration_requests (
   branch     TEXT PRIMARY KEY,
   title      TEXT    NOT NULL DEFAULT '',
@@ -108,8 +108,10 @@ CREATE TABLE IF NOT EXISTS integration_requests (
   merge_oid  TEXT    NOT NULL DEFAULT '',
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL
-);`)
-	return err
+);`); err != nil {
+		return err
+	}
+	return s.migrateEvents()
 }
 
 // upsertRequest is the builder's request/re-request path. It always lands the
@@ -247,11 +249,16 @@ func (s *store) cancel(branch string) (bool, error) {
 // between the read and the write is skipped, never clobbered). A claimer that is
 // still ALIVE (isDead=false) is NEVER touched. Returns the count reverted.
 func (s *store) reclaimStaleClaims(isDead func(session string) bool) (int, error) {
+	recs, err := s.reclaimStaleClaimRecords(isDead)
+	return len(recs), err
+}
+
+func (s *store) reclaimStaleClaimRecords(isDead func(session string) bool) ([]Record, error) {
 	claimed, err := s.query(`WHERE state = ?`, string(StateClaimed))
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	reclaimed := 0
+	var reclaimed []Record
 	for _, rec := range claimed {
 		if !isDead(rec.Claimer) {
 			continue // a live claimer is never reclaimed
@@ -264,7 +271,11 @@ func (s *store) reclaimStaleClaims(isDead func(session string) bool) (int, error
 			return reclaimed, err
 		}
 		if n, _ := res.RowsAffected(); n == 1 {
-			reclaimed++
+			rec.State = StateRequested
+			rec.Claimer = ""
+			rec.Feedback = ""
+			rec.UpdatedAt = now
+			reclaimed = append(reclaimed, rec)
 		}
 	}
 	return reclaimed, nil
@@ -306,6 +317,9 @@ func (s *store) gc(now time.Time, terminalRetention, abandonedRetention time.Dur
 	}
 	if n, _ := res.RowsAffected(); n > 0 {
 		total += int(n)
+	}
+	if err := s.gcEvents(now); err != nil {
+		return total, err
 	}
 	return total, nil
 }
