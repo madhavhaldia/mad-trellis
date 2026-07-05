@@ -270,6 +270,9 @@ git fetch med && git merge --ff-only med/trunk    # follow trunk in your checkou
 A merge conflict or stale base makes `promote` abort cleanly (trunk untouched); resubmit against the
 new tip. A mid-promote death is reconciled by ancestry on the next `promote` / `status` / `recover`.
 The full topology is in **[docs/0005-governed-trunk-loop.md](./docs/0005-governed-trunk-loop.md)**.
+Integrator and builder sessions can also receive fixed-template, daemon-authored nudges when review
+state changes; those nudges are wake-ups only, and the durable integration rows remain the source of
+truth. See **[docs/0007-event-nudges.md](./docs/0007-event-nudges.md)**.
 
 ## Docs
 
@@ -278,6 +281,7 @@ The full topology is in **[docs/0005-governed-trunk-loop.md](./docs/0005-governe
 - **[GROUNDING.md](./GROUNDING.md)** — the 13 invariants and the forkable/convergent/singular model. Read this first.
 - **[docs/0005-governed-trunk-loop.md](./docs/0005-governed-trunk-loop.md)** — the self-hosting / mediated-trunk loop.
 - **[docs/0006-container-grain-image-contract.md](./docs/0006-container-grain-image-contract.md)** — the container-grain image contract.
+- **[docs/0007-event-nudges.md](./docs/0007-event-nudges.md)** — daemon-authored wake-ups for the integration review loop.
 - **[CONTRIBUTING.md](./CONTRIBUTING.md)** — dev setup, the safety gate, and the PR process.
 
 **Design history (ADRs)**

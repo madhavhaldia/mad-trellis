@@ -1,4 +1,4 @@
-# 0006 — Event nudges for the integration review loop
+# 0007 — Event nudges for the integration review loop
 
 > Status: ADOPTED 2026-07-05. The integration review loop now has a daemon-authored
 > event plane: small wake-up records produced by governed state transitions and delivered

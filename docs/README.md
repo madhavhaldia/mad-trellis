@@ -2,7 +2,7 @@
 
 This folder mixes two very different kinds of document. Read the right one for your goal.
 
-> **If you are here to *use* mad-substrate, do not start in the numbered `0001`–`0006` files.**
+> **If you are here to *use* mad-substrate, do not start in the numbered `0001`–`0007` files.**
 > Those are **design-history records** (architecture decision records), not user guides. In
 > particular [`0004-build-brief.md`](./0004-build-brief.md) is a *build-order work plan* for the
 > agent that originally constructed the project — following it as a how-to will only confuse you.
@@ -48,6 +48,9 @@ intent and rationale, not to learn the workflow.
 - **[0006 — The container-grain image contract (bring-your-own-image)](./0006-container-grain-image-contract.md)**
   — the contract a container image must satisfy, why mad-substrate ships no image, and the grain's
   env knobs.
+- **[0007 — Event nudges for the integration review loop](./0007-event-nudges.md)** — why
+  daemon-authored wake-ups exist, how launcher/MCP delivery works, and why nudges never become
+  agent-authored messages or task dispatch.
 
 ---
 
