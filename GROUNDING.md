@@ -90,7 +90,10 @@ The entire engineering problem is **classification + routing**. The lock is a `S
     mad-substrate takes **no goals and dispatches no tasks**; the user drives each session. Any design
     that makes the user *operate* mad-substrate instead of *just using their agent* is wrong. The only
     new surface mad-substrate may add is a **read-only view of the integrated result**; it never adds
-    steps to the prompt loop.
+    steps to the prompt loop. Substrate-authored coordination NUDGES — fixed-template, daemon-authored
+    signals about governed state (a pending review, a verdict), delivered by the launcher/MCP layer
+    and disableable via `MAD_NUDGES=off` — are ambient governance, not goal dispatch; they may never
+    carry agent-authored content or task instructions.
 
 ---
 
