@@ -214,8 +214,13 @@ func TestRoleGatingDispatchRejectsWrongRole(t *testing.T) {
 // ----- builder tools -----
 
 func TestBuilderRequestIntegration(t *testing.T) {
+	t.Setenv("MAD_INTEGRATOR_POOL", "")
 	dir := initRepoOnBranch(t, "nm/s-7-mybranch")
-	be := &stubBackend{reqIntID: "nm/s-7-mybranch", reqIntState: "pending"}
+	be := &stubBackend{
+		reqIntID:    "nm/s-7-mybranch",
+		reqIntState: "pending",
+		leaseViews:  map[string]coopclient.LeaseView{"mad-substrate:integrator:v1": {Held: true}},
+	}
 	s := newTestServer(t, be)
 	s.getwd = func() (string, error) { return dir, nil }
 
@@ -234,6 +239,80 @@ func TestBuilderRequestIntegration(t *testing.T) {
 	}
 	if !strings.Contains(text, "nm/s-7-mybranch") || !strings.Contains(text, "pending") {
 		t.Fatalf("render missing id/state: %q", text)
+	}
+	if strings.Contains(text, "no integrator is currently running") {
+		t.Fatalf("held integrator presence must suppress advisory: %q", text)
+	}
+}
+
+func TestBuilderRequestIntegrationWarnsWhenNoIntegratorRunning(t *testing.T) {
+	t.Setenv("MAD_INTEGRATOR_POOL", "")
+	dir := initRepoOnBranch(t, "nm/s-7-mybranch")
+	be := &stubBackend{
+		reqIntID:    "nm/s-7-mybranch",
+		reqIntState: "pending",
+		leaseViews:  map[string]coopclient.LeaseView{"mad-substrate:integrator:v1": {Held: false}},
+	}
+	s := newTestServer(t, be)
+	s.getwd = func() (string, error) { return dir, nil }
+
+	text, isErr := callArgs(t, s, "mad_request_integration", map[string]string{"title": "my work"})
+	if isErr {
+		t.Fatalf("request should not error: %q", text)
+	}
+	want := "note: no integrator is currently running — your request is queued; ask your operator to run 'mad-substrate integrator start'."
+	if !strings.Contains(text, want) {
+		t.Fatalf("missing no-integrator advisory:\n%s", text)
+	}
+	if got := be.leaseInspectCalls; len(got) != 1 || got[0] != "mad-substrate:integrator:v1" {
+		t.Fatalf("expected singleton presence inspect, got %v", got)
+	}
+}
+
+func TestBuilderRequestIntegrationSuppressesAdvisoryOnInspectError(t *testing.T) {
+	t.Setenv("MAD_INTEGRATOR_POOL", "")
+	dir := initRepoOnBranch(t, "nm/s-7-mybranch")
+	be := &stubBackend{
+		reqIntID:        "nm/s-7-mybranch",
+		reqIntState:     "pending",
+		leaseInspectErr: transportError("daemon unavailable"),
+	}
+	s := newTestServer(t, be)
+	s.getwd = func() (string, error) { return dir, nil }
+
+	text, isErr := callArgs(t, s, "mad_request_integration", map[string]string{"title": "my work"})
+	if isErr {
+		t.Fatalf("request should not error: %q", text)
+	}
+	if strings.Contains(text, "no integrator is currently running") {
+		t.Fatalf("inspect failure must suppress advisory, got %q", text)
+	}
+}
+
+func TestBuilderRequestIntegrationPoolHeldSuppressesAdvisory(t *testing.T) {
+	t.Setenv("MAD_INTEGRATOR_POOL", "2")
+	dir := initRepoOnBranch(t, "nm/s-7-mybranch")
+	be := &stubBackend{
+		reqIntID:    "nm/s-7-mybranch",
+		reqIntState: "pending",
+		leaseViews: map[string]coopclient.LeaseView{
+			"mad-substrate:integrator:v1:slot-0": {Held: false},
+			"mad-substrate:integrator:v1:slot-1": {Held: true},
+		},
+	}
+	s := newTestServer(t, be)
+	s.getwd = func() (string, error) { return dir, nil }
+
+	text, isErr := callArgs(t, s, "mad_request_integration", map[string]string{"title": "my work"})
+	if isErr {
+		t.Fatalf("request should not error: %q", text)
+	}
+	if strings.Contains(text, "no integrator is currently running") {
+		t.Fatalf("any held pool slot must suppress advisory, got %q", text)
+	}
+	wantKeys := []string{"mad-substrate:integrator:v1:slot-0", "mad-substrate:integrator:v1:slot-1"}
+	if got := be.leaseInspectCalls; len(got) != len(wantKeys) || got[0] != wantKeys[0] || got[1] != wantKeys[1] {
+		t.Fatalf("pool inspect keys mismatch: got %v want %v", got, wantKeys)
 	}
 }
 

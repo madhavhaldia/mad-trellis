@@ -53,6 +53,11 @@ const maxLine = 8 << 20
 // LeaseTTL can never spin the renew goroutine into a busy loop.
 const minRenewInterval = time.Second
 
+const (
+	integrationEventPollInterval = 2 * time.Second
+	integrationEventPollMax      = 50
+)
+
 // backend is the minimal daemon-facing surface the MCP tools need. *coopclient.Client
 // satisfies it (compile-time asserted below), so Serve builds a real client
 // while the per-tool handlers are unit-tested against a stub — no live daemon.
@@ -71,6 +76,8 @@ type backend interface {
 	IntegrationPending() ([]coopclient.PendingIntegration, error)
 	IntegrationClaim(id string) (ok bool, branch, title string, err error)
 	IntegrationVerdict(id, decision, feedback, merge string) (ok bool, state string, err error)
+	IntegrationEvents(branch string, max int) ([]coopclient.IntegrationEvent, error)
+	LeaseInspect(key []byte) (coopclient.LeaseView, error)
 
 	Close() error
 }
@@ -205,6 +212,21 @@ func serveWith(ctx context.Context, in io.Reader, out io.Writer, version, role s
 		}()
 	}
 
+	if os.Getenv("MAD_LAUNCHED") == "" {
+		if branch, ok := s.integrationEventBranch(); ok {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				defer func() {
+					if r := recover(); r != nil {
+						s.logf("mcp: integration event inbox panic recovered: %v", r)
+					}
+				}()
+				s.integrationEventInboxLoop(serveCtx, branch)
+			}()
+		}
+	}
+
 	defer wg.Wait()
 	defer cancel() // stop renew before shutdown releases leases
 
@@ -248,6 +270,10 @@ type server struct {
 	// signal this process; the renew loop / shutdown remove it on release. Guarded
 	// by mu (written by acquireIntegratorPresence, cleared on removal).
 	presencePidfile string
+
+	eventMu    sync.Mutex
+	eventInbox []string
+	eventLast  string
 
 	out io.Writer
 }
@@ -536,13 +562,22 @@ func integratorPoolSize() int {
 // lease inside conductor.Converge. The slots only bound how many integrators may
 // run at once; they add NO cross-integrator messaging.
 func integratorSlotKeys(n int) []string {
-	if n <= 1 {
-		return []string{integratorPresenceKey}
+	raw := integratorSlotRawKeys(n)
+	keys := make([]string, len(raw))
+	for i, key := range raw {
+		keys[i] = base64.StdEncoding.EncodeToString(key)
 	}
-	keys := make([]string, n)
+	return keys
+}
+
+func integratorSlotRawKeys(n int) [][]byte {
+	if n <= 1 {
+		return [][]byte{[]byte("mad-substrate:integrator:v1")}
+	}
+	keys := make([][]byte, n)
 	for i := 0; i < n; i++ {
 		raw := fmt.Sprintf("mad-substrate:integrator:v1:slot-%d", i)
-		keys[i] = base64.StdEncoding.EncodeToString([]byte(raw))
+		keys[i] = []byte(raw)
 	}
 	return keys
 }
@@ -639,6 +674,88 @@ func (s *server) presenceRenewLoop(ctx context.Context) {
 			}
 		}
 	}
+}
+
+func (s *server) integrationEventBranch() (string, bool) {
+	if s.role == roleIntegrator {
+		return "", true
+	}
+	branch, err := s.ownBranch()
+	if err != nil {
+		s.logf("mcp: integration event inbox disabled; cannot resolve builder branch: %v", err)
+		return "", false
+	}
+	return branch, true
+}
+
+func (s *server) integrationEventInboxLoop(ctx context.Context, branch string) {
+	poll := func() {
+		be := s.backendOrRedial()
+		if be == nil {
+			return
+		}
+		events, err := be.IntegrationEvents(branch, integrationEventPollMax)
+		if err != nil {
+			// Fail-soft (Inv 13): event delivery is advisory; polling errors mean
+			// no nudges, never a broken tool result.
+			s.logf("mcp: integration event poll failed: %v", err)
+			return
+		}
+		s.enqueueIntegrationEvents(events)
+	}
+
+	poll()
+	t := time.NewTicker(integrationEventPollInterval)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			poll()
+		}
+	}
+}
+
+func (s *server) enqueueIntegrationEvents(events []coopclient.IntegrationEvent) {
+	requested := 0
+	for _, ev := range events {
+		// A requeued request (dead claimer) is work awaiting review again — fold
+		// it into the same "awaiting review" count as a fresh request.
+		if ev.Kind == "integration.requested" || ev.Kind == "integration.requeued" {
+			requested++
+			continue
+		}
+		if line, ok := renderIntegrationNudge(ev.Kind, ev.Branch, 1); ok {
+			s.enqueueIntegrationNudge(line)
+		}
+	}
+	if requested > 0 {
+		if line, ok := renderIntegrationNudge("integration.requested", "", requested); ok {
+			s.enqueueIntegrationNudge(line)
+		}
+	}
+}
+
+func (s *server) enqueueIntegrationNudge(line string) {
+	s.eventMu.Lock()
+	defer s.eventMu.Unlock()
+	if line == "" || line == s.eventLast {
+		return
+	}
+	s.eventInbox = append(s.eventInbox, line)
+	s.eventLast = line
+}
+
+func (s *server) drainIntegrationNudges() []string {
+	s.eventMu.Lock()
+	defer s.eventMu.Unlock()
+	if len(s.eventInbox) == 0 {
+		return nil
+	}
+	lines := append([]string(nil), s.eventInbox...)
+	s.eventInbox = nil
+	return lines
 }
 
 // writePresencePidfile records THIS integrator MCP server's OS pid in a pidfile

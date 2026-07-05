@@ -28,10 +28,16 @@ const defaultProtocolVersion = "2024-11-05"
 // the single most important piece of agent steering this server emits.
 const standingGuidance = "You are running inside a mad-substrate governed boundary: an isolated git worktree with its own ports and state. Edits to your working tree are private and safe. Before editing a SHARED/convergent resource (one that must merge to the trunk), coordinate with these tools: mad_classify tells you whether a path needs coordination; mad_claim takes it so other agents see it as held. Forkable paths need no claim — edit freely. mad_status and mad_locks show current contention. You do NOT merge your own branch: just commit your work on your boundary branch — convergence to the trunk is handled outside the session (by `mad-substrate integrate` / the lead). The substrate guarantees safety regardless; these tools just help you avoid wasted work from conflicting edits."
 
+const builderGuidance = standingGuidance + " Once your work is committed, call mad_request_integration. The verdict will arrive as a [mad-substrate] nudge (in your terminal or on a tool result), and mad_integration_status reads the feedback."
+
+const integratorGuidance = "You are the mad-substrate trunk-side reviewer. On start, ALWAYS drain mad_integration_pending; state is truth. Loop: claim a request, review the branch diff, then call mad_integration_approve or mad_integration_reject with concrete feedback, and re-check mad_integration_pending before going idle. [mad-substrate] lines appearing in the terminal or appended to tool results are wake-up signals; respond by re-running mad_integration_pending. mad_integration_approve merges into the CURRENT branch and honors the optional MAD_INTEGRATOR_GATE shell gate."
+
 // failSoftNote is the advisory returned (as isError) when the daemon is
 // unreachable even after a re-Dial. Inv 13: a governed session must be no more
 // fragile than a bare one — so we tell the agent it is SAFE to proceed.
 const failSoftNote = "mad-substrate daemon unreachable — proceeding is safe (your worktree is isolated); coordination is just unavailable right now."
+
+const noIntegratorAdvisory = "note: no integrator is currently running — your request is queued; ask your operator to run 'mad-substrate integrator start'."
 
 // toolDescriptor is one entry of tools/list. InputSchema is a raw JSON object so
 // each tool can pin its exact schema (additionalProperties:false etc.) without
@@ -182,8 +188,15 @@ func (s *server) handleInitialize(req *rpcRequest) rpcResponse {
 		ProtocolVersion: pv,
 		Capabilities:    map[string]any{"tools": map[string]any{}},
 		ServerInfo:      serverInfo{Name: "mad-substrate", Version: s.version},
-		Instructions:    standingGuidance,
+		Instructions:    s.initializeInstructions(),
 	})
+}
+
+func (s *server) initializeInstructions() string {
+	if s.role == roleIntegrator {
+		return integratorGuidance
+	}
+	return builderGuidance
 }
 
 // toolContent is one MCP content element; we only ever emit a single text block.
@@ -234,8 +247,39 @@ func (s *server) handleToolsCall(req *rpcRequest) (resp rpcResponse) {
 		}
 	}
 
-	result := s.callTool(p)
+	result := s.appendIntegrationNudges(s.callTool(p))
 	return resultResponse(req.ID, result)
+}
+
+func (s *server) appendIntegrationNudges(result toolResult) toolResult {
+	lines := s.drainIntegrationNudges()
+	if len(lines) == 0 || len(result.Content) == 0 || result.Content[0].Type != "text" {
+		return result
+	}
+	result.Content[0].Text += "\n" + strings.Join(lines, "\n")
+	return result
+}
+
+func renderIntegrationNudge(kind, branch string, count int) (string, bool) {
+	switch kind {
+	case "integration.requested":
+		if count < 1 {
+			count = 1
+		}
+		return fmt.Sprintf("[mad-substrate] %d integration request(s) awaiting review — run mad_integration_pending and process them.", count), true
+	case "integration.verdict":
+		if strings.TrimSpace(branch) == "" {
+			return "", false
+		}
+		return fmt.Sprintf("[mad-substrate] your integration request on %s has a verdict — run mad_integration_status.", branch), true
+	case "integration.claimed":
+		if strings.TrimSpace(branch) == "" {
+			return "", false
+		}
+		return fmt.Sprintf("[mad-substrate] your integration request on %s was claimed for review.", branch), true
+	default:
+		return "", false
+	}
 }
 
 // callTool routes to the named tool handler. The dispatch is role-gated: a tool
@@ -516,8 +560,25 @@ func (s *server) toolRequestIntegration(title string) toolResult {
 		if err != nil {
 			return toolResult{}, err
 		}
-		return textResult(fmt.Sprintf("Requested integration of %s (id %s) — state: %s. Poll with mad_integration_status.", branch, id, state), false), nil
+		text := fmt.Sprintf("Requested integration of %s (id %s) — state: %s. Poll with mad_integration_status.", branch, id, state)
+		if s.noIntegratorRunning(be) {
+			text += "\n" + noIntegratorAdvisory
+		}
+		return textResult(text, false), nil
 	})
+}
+
+func (s *server) noIntegratorRunning(be backend) bool {
+	for _, key := range integratorSlotRawKeys(integratorPoolSize()) {
+		view, err := be.LeaseInspect(key)
+		if err != nil {
+			return false
+		}
+		if view.Held {
+			return false
+		}
+	}
+	return true
 }
 
 // toolIntegrationStatus (builder) reports the state + feedback of the builder's

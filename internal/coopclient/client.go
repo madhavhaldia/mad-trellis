@@ -26,6 +26,7 @@
 package coopclient
 
 import (
+	"encoding/base64"
 	"fmt"
 	"os"
 	"strconv"
@@ -117,6 +118,16 @@ type PendingIntegration struct {
 	Branch      string
 	Title       string
 	State       string
+	CreatedAtMs int64
+}
+
+// IntegrationEvent is one daemon-authored wake-up from integration.events.
+// It deliberately carries no agent-authored payload; request rows remain the
+// durable truth, while events are just nudges to re-read that truth.
+type IntegrationEvent struct {
+	ID          int64
+	Kind        string
+	Branch      string
 	CreatedAtMs int64
 }
 
@@ -329,6 +340,17 @@ func (c *Client) Submit(branch string) (id, state, base string, err error) {
 // (Inv 9); a sibling caller uses this to discover whether an integrator's
 // presence lease is currently live.
 func (c *Client) Inspect(leaseKey string) (LeaseView, error) {
+	return c.inspectEncodedLeaseKey(leaseKey)
+}
+
+// LeaseInspect reads lease.inspect for a raw lease key, encoding it exactly as
+// the daemon wire contract expects. This is the MCP-facing shape for presence
+// checks that construct well-known raw keys locally.
+func (c *Client) LeaseInspect(key []byte) (LeaseView, error) {
+	return c.inspectEncodedLeaseKey(base64.StdEncoding.EncodeToString(key))
+}
+
+func (c *Client) inspectEncodedLeaseKey(leaseKey string) (LeaseView, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	var out struct {
@@ -443,6 +465,38 @@ func (c *Client) IntegrationVerdict(id, decision, feedback, merge string) (ok bo
 		return false, "", err
 	}
 	return out.OK, out.State, nil
+}
+
+// IntegrationEvents polls daemon-authored wake-up events for branch. An empty
+// branch asks for integrator-audience events readable by this connection.
+func (c *Client) IntegrationEvents(branch string, max int) ([]IntegrationEvent, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	var out struct {
+		Events []struct {
+			ID          int64  `json:"id"`
+			Kind        string `json:"kind"`
+			Branch      string `json:"branch"`
+			CreatedAtMs int64  `json:"created_at_ms"`
+		} `json:"events"`
+	}
+	p := map[string]any{}
+	if branch != "" {
+		p["branch"] = branch
+	}
+	if max > 0 {
+		p["max"] = max
+	}
+	if err := c.call("integration.events", p, &out); err != nil {
+		return nil, err
+	}
+	events := make([]IntegrationEvent, 0, len(out.Events))
+	for _, ev := range out.Events {
+		events = append(events, IntegrationEvent{
+			ID: ev.ID, Kind: ev.Kind, Branch: ev.Branch, CreatedAtMs: ev.CreatedAtMs,
+		})
+	}
+	return events, nil
 }
 
 // Integrations lists every registered integration.

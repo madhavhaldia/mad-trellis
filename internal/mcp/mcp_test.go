@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"io"
 	"strings"
 	"sync"
@@ -81,6 +82,20 @@ type stubBackend struct {
 	verdictErr                                                error
 	verdictID, verdictDecision, verdictFeedback, verdictMerge string // recorded
 
+	// integration event inbox
+	events       []coopclient.IntegrationEvent
+	eventsErr    error
+	eventsNotify chan struct{}
+	eventsOnce   sync.Once
+	eventsCalls  int
+	eventsBranch string
+	eventsMax    int
+
+	// read-only lease inspect
+	leaseViews        map[string]coopclient.LeaseView // raw lease key -> view
+	leaseInspectErr   error
+	leaseInspectCalls []string // raw lease keys
+
 	// counters
 	renewCalls   int
 	releaseCalls int
@@ -119,6 +134,39 @@ func (s *stubBackend) IntegrationVerdict(id, decision, feedback, merge string) (
 	s.verdictCalls++
 	s.verdictID, s.verdictDecision, s.verdictFeedback, s.verdictMerge = id, decision, feedback, merge
 	return s.verdictOK, s.verdictState, s.verdictErr
+}
+
+func (s *stubBackend) IntegrationEvents(branch string, max int) ([]coopclient.IntegrationEvent, error) {
+	s.mu.Lock()
+	s.eventsCalls++
+	s.eventsBranch = branch
+	s.eventsMax = max
+	if s.eventsNotify != nil {
+		s.eventsOnce.Do(func() { close(s.eventsNotify) })
+	}
+	if s.eventsErr != nil {
+		err := s.eventsErr
+		s.mu.Unlock()
+		return nil, err
+	}
+	out := append([]coopclient.IntegrationEvent(nil), s.events...)
+	s.events = nil
+	s.mu.Unlock()
+	return out, nil
+}
+
+func (s *stubBackend) LeaseInspect(key []byte) (coopclient.LeaseView, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	raw := string(key)
+	s.leaseInspectCalls = append(s.leaseInspectCalls, raw)
+	if s.leaseInspectErr != nil {
+		return coopclient.LeaseView{}, s.leaseInspectErr
+	}
+	if s.leaseViews != nil {
+		return s.leaseViews[raw], nil
+	}
+	return coopclient.LeaseView{}, nil
 }
 
 func (s *stubBackend) Holder() string { return s.holder }
@@ -545,6 +593,57 @@ func runServeRole(t *testing.T, be backend, role, input string) []string {
 	return lines
 }
 
+func runServeRoleAfterFirstEventPoll(t *testing.T, be *stubBackend, role, input string) []string {
+	t.Helper()
+	t.Setenv("MAD_RUNTIME_DIR", t.TempDir())
+	t.Setenv("MAD_LAUNCHED", "")
+	be.eventsNotify = make(chan struct{})
+	var out bytes.Buffer
+	cfg := coopclient.Config{LeaseTTL: 2 * time.Second, Session: "sess-1"}
+	dial := func(coopclient.Config) (backend, error) { return be, nil }
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	pr, pw := io.Pipe()
+	done := make(chan error, 1)
+	go func() {
+		done <- serveWith(ctx, pr, &out, "v9", role, func(string, ...any) {}, cfg, dial)
+	}()
+	select {
+	case <-be.eventsNotify:
+	case <-time.After(500 * time.Millisecond):
+		cancel()
+		_ = pw.Close()
+		t.Fatal("event poll did not start")
+	}
+	if _, err := pw.Write([]byte(input)); err != nil {
+		cancel()
+		_ = pw.Close()
+		t.Fatalf("write input: %v", err)
+	}
+	if err := pw.Close(); err != nil {
+		cancel()
+		t.Fatalf("close input: %v", err)
+	}
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("serveWith: %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		cancel()
+		t.Fatal("serveWith did not return")
+	}
+	var lines []string
+	sc := bufio.NewScanner(&out)
+	sc.Buffer(make([]byte, 0, 1<<20), 1<<20)
+	for sc.Scan() {
+		if strings.TrimSpace(sc.Text()) != "" {
+			lines = append(lines, sc.Text())
+		}
+	}
+	return lines
+}
+
 // ----- integrator singleton enforcement (Inv 13 fail-soft) -----
 
 // TestIntegratorRefusesSecond proves the enforced refusal: a reachable daemon
@@ -761,6 +860,61 @@ func TestInitializeHandshake(t *testing.T) {
 	}
 }
 
+func TestInitializeInstructionsRoleCorrect(t *testing.T) {
+	builder := initializeInstructions(t, "builder")
+	if !strings.Contains(builder, "mad_request_integration") {
+		t.Fatalf("builder guidance must tell builders to request integration: %q", builder)
+	}
+	if !strings.Contains(builder, "[mad-substrate] nudge") || !strings.Contains(builder, "mad_integration_status") {
+		t.Fatalf("builder guidance must explain nudge/status feedback loop: %q", builder)
+	}
+	if strings.Contains(builder, "trunk-side reviewer") {
+		t.Fatalf("builder guidance must not use integrator role text: %q", builder)
+	}
+
+	defaulted := initializeInstructions(t, "not-a-real-role")
+	if defaulted != builder {
+		t.Fatalf("unknown role must default to builder guidance\nbuilder: %q\ndefault: %q", builder, defaulted)
+	}
+
+	integrator := initializeInstructions(t, "integrator")
+	for _, want := range []string{
+		"trunk-side reviewer",
+		"ALWAYS drain mad_integration_pending",
+		"claim",
+		"mad_integration_approve",
+		"mad_integration_reject",
+		"MAD_INTEGRATOR_GATE",
+		"[mad-substrate]",
+	} {
+		if !strings.Contains(integrator, want) {
+			t.Fatalf("integrator guidance missing %q: %q", want, integrator)
+		}
+	}
+	if strings.Contains(integrator, "once your work is committed") {
+		t.Fatalf("integrator guidance must not tell the reviewer to request integration: %q", integrator)
+	}
+}
+
+func initializeInstructions(t *testing.T, role string) string {
+	t.Helper()
+	in := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}}` + "\n"
+	be := &stubBackend{acquireGranted: true, renewOK: true}
+	lines := runServeRole(t, be, role, in)
+	if len(lines) != 1 {
+		t.Fatalf("expected 1 response line, got %d: %v", len(lines), lines)
+	}
+	var resp struct {
+		Result struct {
+			Instructions string `json:"instructions"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal([]byte(lines[0]), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	return resp.Result.Instructions
+}
+
 func TestInitializeDefaultProtocolVersion(t *testing.T) {
 	in := `{"jsonrpc":"2.0","id":1,"method":"initialize","params":{}}` + "\n"
 	lines := runServe(t, &stubBackend{}, in)
@@ -886,6 +1040,121 @@ func TestToolsCallViaTransport(t *testing.T) {
 	if !strings.Contains(resp.Result.Content[0].Text, "forkable") {
 		t.Fatalf("got %q", resp.Result.Content[0].Text)
 	}
+}
+
+func TestPiggybackAppendsQueuedEventNudge(t *testing.T) {
+	be := &stubBackend{
+		acquireGranted: true,
+		renewOK:        true,
+		events: []coopclient.IntegrationEvent{
+			{Kind: "integration.requested", Branch: "nm/a"},
+			{Kind: "integration.requested", Branch: "nm/b"},
+		},
+	}
+	in := `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"mad_integration_pending","arguments":{}}}` + "\n"
+	lines := runServeRoleAfterFirstEventPoll(t, be, "integrator", in)
+	if len(lines) != 1 {
+		t.Fatalf("expected 1 line, got %v", lines)
+	}
+	text := toolTextFromLine(t, lines[0])
+	want := "No integration requests are pending.\n[mad-substrate] 2 integration request(s) awaiting review — run mad_integration_pending and process them."
+	if text != want {
+		t.Fatalf("piggyback text mismatch\ngot:  %q\nwant: %q", text, want)
+	}
+	if be.eventsBranch != "" {
+		t.Fatalf("integrator event polling must use empty branch, got %q", be.eventsBranch)
+	}
+}
+
+func TestPiggybackEmptyInboxLeavesToolResultByteIdentical(t *testing.T) {
+	be := &stubBackend{acquireGranted: true, renewOK: true}
+	in := `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"mad_integration_pending","arguments":{}}}` + "\n"
+	lines := runServeRoleAfterFirstEventPoll(t, be, "integrator", in)
+	if got := toolTextFromLine(t, lines[0]); got != "No integration requests are pending." {
+		t.Fatalf("empty inbox must not alter result text, got %q", got)
+	}
+}
+
+func TestPiggybackDisabledWhenLauncherRanSession(t *testing.T) {
+	t.Setenv("MAD_LAUNCHED", "1")
+	be := &stubBackend{
+		acquireGranted: true,
+		renewOK:        true,
+		events:         []coopclient.IntegrationEvent{{Kind: "integration.requested", Branch: "nm/a"}},
+	}
+	in := `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"mad_integration_pending","arguments":{}}}` + "\n"
+	lines := runServeRole(t, be, "integrator", in)
+	if got := toolTextFromLine(t, lines[0]); got != "No integration requests are pending." {
+		t.Fatalf("launcher-run sessions must not piggyback nudges, got %q", got)
+	}
+	if be.eventsCalls != 0 {
+		t.Fatalf("MAD_LAUNCHED=1 must not start event polling, got %d calls", be.eventsCalls)
+	}
+}
+
+func TestPiggybackEventErrorsFailSoft(t *testing.T) {
+	be := &stubBackend{
+		acquireGranted: true,
+		renewOK:        true,
+		eventsErr:      errors.New("events table unavailable"),
+	}
+	in := `{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"mad_integration_pending","arguments":{}}}` + "\n"
+	lines := runServeRoleAfterFirstEventPoll(t, be, "integrator", in)
+	if got := toolTextFromLine(t, lines[0]); got != "No integration requests are pending." {
+		t.Fatalf("event errors must not alter or break tool result, got %q", got)
+	}
+}
+
+func TestRenderIntegrationNudgeTemplatesAreFixed(t *testing.T) {
+	cases := []struct {
+		kind   string
+		branch string
+		count  int
+		want   string
+	}{
+		{
+			kind:  "integration.requested",
+			count: 3,
+			want:  "[mad-substrate] 3 integration request(s) awaiting review — run mad_integration_pending and process them.",
+		},
+		{
+			kind:   "integration.verdict",
+			branch: "nm/branch",
+			count:  1,
+			want:   "[mad-substrate] your integration request on nm/branch has a verdict — run mad_integration_status.",
+		},
+		{
+			kind:   "integration.claimed",
+			branch: "nm/branch",
+			count:  1,
+			want:   "[mad-substrate] your integration request on nm/branch was claimed for review.",
+		},
+	}
+	for _, tc := range cases {
+		got, ok := renderIntegrationNudge(tc.kind, tc.branch, tc.count)
+		if !ok || got != tc.want {
+			t.Fatalf("renderIntegrationNudge(%q, %q, %d) = %q, %v; want %q, true", tc.kind, tc.branch, tc.count, got, ok, tc.want)
+		}
+	}
+	if got, ok := renderIntegrationNudge("integration.unknown", "nm/branch", 1); ok || got != "" {
+		t.Fatalf("unknown event kind must render no nudge, got %q ok=%v", got, ok)
+	}
+}
+
+func toolTextFromLine(t *testing.T, line string) string {
+	t.Helper()
+	var resp struct {
+		Result struct {
+			Content []toolContent `json:"content"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal([]byte(line), &resp); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(resp.Result.Content) != 1 || resp.Result.Content[0].Type != "text" {
+		t.Fatalf("bad tool content: %+v", resp.Result.Content)
+	}
+	return resp.Result.Content[0].Text
 }
 
 func TestUnknownMethodError(t *testing.T) {

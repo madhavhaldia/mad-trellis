@@ -255,3 +255,38 @@ func TestInspectWire(t *testing.T) {
 		t.Fatalf("key param wrong: %v", p)
 	}
 }
+
+func TestLeaseInspectWire(t *testing.T) {
+	d := newFakeDaemon(t, map[string]string{
+		"lease.inspect": `{"exists":true,"holder":"integ-1","expires_at_ms":99,"fence":3,"held":true}`,
+	})
+	c := dialFake(t, d)
+	view, err := c.LeaseInspect([]byte("key"))
+	if err != nil {
+		t.Fatalf("LeaseInspect: %v", err)
+	}
+	if !view.Exists || view.Holder != "integ-1" || !view.Held || view.Fence != 3 || view.ExpiresAtMs != 99 {
+		t.Fatalf("decoded wrong: %+v", view)
+	}
+	if p := d.paramsFor(t, "lease.inspect"); p["key"] != "a2V5" {
+		t.Fatalf("key param wrong: %v", p)
+	}
+}
+
+func TestIntegrationEventsWire(t *testing.T) {
+	d := newFakeDaemon(t, map[string]string{
+		"integration.events": `{"events":[{"id":7,"kind":"integration.verdict","branch":"nm/x","created_at_ms":123}]}`,
+	})
+	c := dialFake(t, d)
+	events, err := c.IntegrationEvents("nm/x", 25)
+	if err != nil {
+		t.Fatalf("IntegrationEvents: %v", err)
+	}
+	if len(events) != 1 || events[0].ID != 7 || events[0].Kind != "integration.verdict" || events[0].Branch != "nm/x" || events[0].CreatedAtMs != 123 {
+		t.Fatalf("decoded wrong: %+v", events)
+	}
+	p := d.paramsFor(t, "integration.events")
+	if p["branch"] != "nm/x" || p["max"] != float64(25) {
+		t.Fatalf("params wrong: %v", p)
+	}
+}
