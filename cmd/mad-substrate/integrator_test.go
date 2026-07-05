@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 // captureStdout runs fn with os.Stdout redirected to a pipe and returns what was
@@ -143,8 +144,10 @@ func TestIntegratorStartPrintMode(t *testing.T) {
 	if !strings.Contains(got, shellQuote(repo)) {
 		t.Errorf("output missing the quoted worktree dir %q: %q", repo, got)
 	}
-	if !strings.Contains(got, "claude") {
-		t.Errorf("output missing default agent `claude`: %q", got)
+	for _, want := range []string{"integrator", "run", "--", "claude"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("output missing %q from integrator-run command: %q", want, got)
+		}
 	}
 }
 
@@ -167,15 +170,17 @@ func TestIntegratorStartPrintModeCodex(t *testing.T) {
 	if !strings.Contains(got, "codex") {
 		t.Errorf("output missing agent `codex`: %q", got)
 	}
-	// The role'd MCP args must be wired into the codex command.
-	if !strings.Contains(got, `--role`) || !strings.Contains(got, "integrator") {
-		t.Errorf("codex command missing integrator role wiring: %q", got)
+	for _, want := range []string{"integrator", "run", "--", "codex"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("output missing %q from integrator-run command: %q", want, got)
+		}
 	}
 }
 
 // TestStartIntegratorPrintOnly: the factored startIntegrator with printOnly=true
-// wires the integrator config into dir (claude writes .mcp.json) and returns
-// opened=false (it prints, opens no terminal) without needing a daemon.
+// returns opened=false (it prints, opens no terminal) without needing a daemon.
+// The printed command must enter the new `integrator run` wrapper; the wrapper
+// performs the actual wiring inside the opened terminal.
 func TestStartIntegratorPrintOnly(t *testing.T) {
 	repo := seedRepo(t)
 	t.Chdir(repo)
@@ -191,12 +196,177 @@ func TestStartIntegratorPrintOnly(t *testing.T) {
 	if opened {
 		t.Errorf("printOnly must not open a terminal (opened=true)")
 	}
-	// Wiring actually happened: claude's integrator wiring writes .mcp.json.
-	if _, err := os.Stat(filepath.Join(repo, ".mcp.json")); err != nil {
-		t.Errorf("expected integrator wiring to write .mcp.json in %s: %v", repo, err)
+	if _, err := os.Stat(filepath.Join(repo, ".mcp.json")); !os.IsNotExist(err) {
+		t.Errorf("integrator start should leave wiring to integrator run; .mcp.json stat err=%v", err)
 	}
-	// The printed command targets the worktree and the agent.
-	if !strings.Contains(got, shellQuote(repo)) || !strings.Contains(got, "claude") {
-		t.Errorf("printed command missing dir/agent: %q", got)
+	for _, want := range []string{shellQuote(repo), "integrator", "run", "--", "claude"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("printed command missing %q: %q", want, got)
+		}
+	}
+}
+
+func TestBuildIntegratorAgentArgsAppendsRolePromptUnlessUserProvidedPrompt(t *testing.T) {
+	got := buildIntegratorAgentArgs("claude", nil, []string{"--model", "opus"})
+	if len(got) == 0 || got[len(got)-1] != defaultIntegratorPrompt {
+		t.Fatalf("default role prompt must be appended when no positional prompt is present; got %#v", got)
+	}
+
+	got = buildIntegratorAgentArgs("claude", []string{"-c", "x=y"}, []string{"review this branch manually"})
+	if got[len(got)-1] == defaultIntegratorPrompt {
+		t.Fatalf("default role prompt must be skipped when passArgs already contain a positional prompt; got %#v", got)
+	}
+	if !strings.Contains(strings.Join(got, "\x00"), "review this branch manually") {
+		t.Fatalf("user positional prompt was not preserved: %#v", got)
+	}
+}
+
+func TestIntegratorKeepaliveRestartsAfterCrashAndStopsOnCleanExit(t *testing.T) {
+	var calls int
+	var sleeps []time.Duration
+	opts := integratorRunOptions{
+		Keepalive:   true,
+		Out:         io.Discard,
+		Err:         io.Discard,
+		RapidWindow: time.Minute,
+		RunOnce: func() (int, error) {
+			calls++
+			if calls == 1 {
+				return 2, nil
+			}
+			return 0, nil
+		},
+		Inspect: func(string) (bool, string, bool) { return false, "", true },
+		Sleep:   func(d time.Duration) { sleeps = append(sleeps, d) },
+		WaitForRetry: func() error {
+			t.Fatal("retry prompt should not be reached after one crash")
+			return nil
+		},
+		Now: time.Now,
+	}
+
+	code, err := runIntegratorKeepalive(opts)
+	if err != nil {
+		t.Fatalf("runIntegratorKeepalive: %v", err)
+	}
+	if code != 0 {
+		t.Fatalf("exit code = %d, want clean final exit 0", code)
+	}
+	if calls != 2 {
+		t.Fatalf("RunOnce calls = %d, want 2", calls)
+	}
+	if len(sleeps) != 1 || sleeps[0] != time.Second {
+		t.Fatalf("backoff sleeps = %v, want [1s]", sleeps)
+	}
+}
+
+func TestIntegratorKeepaliveCleanExitDoesNotRestart(t *testing.T) {
+	var calls int
+	opts := integratorRunOptions{
+		Keepalive: true,
+		Out:       io.Discard,
+		Err:       io.Discard,
+		RunOnce: func() (int, error) {
+			calls++
+			return 0, nil
+		},
+		Inspect: func(string) (bool, string, bool) { return false, "", true },
+		Sleep: func(time.Duration) {
+			t.Fatal("clean exit must not sleep for restart")
+		},
+		WaitForRetry: func() error {
+			t.Fatal("clean exit must not park for retry")
+			return nil
+		},
+		Now: time.Now,
+	}
+
+	code, err := runIntegratorKeepalive(opts)
+	if err != nil {
+		t.Fatalf("runIntegratorKeepalive: %v", err)
+	}
+	if code != 0 || calls != 1 {
+		t.Fatalf("code=%d calls=%d, want code 0 and one call", code, calls)
+	}
+}
+
+func TestIntegratorKeepaliveParksAfterThreeRapidCrashes(t *testing.T) {
+	var calls int
+	var retries int
+	var out bytes.Buffer
+	fixedNow := time.Unix(1000, 0)
+	opts := integratorRunOptions{
+		Keepalive:   true,
+		Out:         &out,
+		Err:         io.Discard,
+		RapidWindow: time.Minute,
+		RunOnce: func() (int, error) {
+			calls++
+			if calls <= 3 {
+				return 9, nil
+			}
+			return 0, nil
+		},
+		Inspect: func(string) (bool, string, bool) { return false, "", true },
+		Sleep:   func(time.Duration) {},
+		WaitForRetry: func() error {
+			retries++
+			return nil
+		},
+		Now: func() time.Time { return fixedNow },
+	}
+
+	code, err := runIntegratorKeepalive(opts)
+	if err != nil {
+		t.Fatalf("runIntegratorKeepalive: %v", err)
+	}
+	if code != 0 || calls != 4 {
+		t.Fatalf("code=%d calls=%d, want final clean exit after retry", code, calls)
+	}
+	if retries != 1 {
+		t.Fatalf("retry waits = %d, want 1", retries)
+	}
+	if !strings.Contains(out.String(), "integrator crashed repeatedly — press enter to retry, ctrl-c to quit") {
+		t.Fatalf("missing repeated-crash prompt: %q", out.String())
+	}
+}
+
+func TestIntegratorKeepaliveStopsWhenAnotherIntegratorAppears(t *testing.T) {
+	var calls int
+	var out bytes.Buffer
+	opts := integratorRunOptions{
+		Socket:    "/tmp/mad.sock",
+		Keepalive: true,
+		Out:       &out,
+		Err:       io.Discard,
+		RunOnce: func() (int, error) {
+			calls++
+			return 3, nil
+		},
+		Inspect: func(socket string) (bool, string, bool) {
+			if socket != "/tmp/mad.sock" {
+				t.Fatalf("inspect socket = %q", socket)
+			}
+			return true, "s-other", true
+		},
+		Sleep: func(time.Duration) {
+			t.Fatal("must not sleep/restart when another integrator holds presence")
+		},
+		WaitForRetry: func() error {
+			t.Fatal("must not park when another integrator holds presence")
+			return nil
+		},
+		Now: time.Now,
+	}
+
+	code, err := runIntegratorKeepalive(opts)
+	if err != nil {
+		t.Fatalf("runIntegratorKeepalive: %v", err)
+	}
+	if code != 0 || calls != 1 {
+		t.Fatalf("code=%d calls=%d, want clean wrapper exit without restart", code, calls)
+	}
+	if !strings.Contains(out.String(), "another integrator is now running (holder s-other); exiting") {
+		t.Fatalf("missing zombie-guard message: %q", out.String())
 	}
 }

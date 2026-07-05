@@ -379,6 +379,9 @@ func TestRunMintsAcquiresAndExportsSessionToken(t *testing.T) {
 	if sp.env["MAD_SESSION"] != "s-1-abc" {
 		t.Fatalf("agent env must still carry MAD_SESSION; got %q", sp.env["MAD_SESSION"])
 	}
+	if sp.env["MAD_LAUNCHED"] != "1" {
+		t.Fatalf("launcher-spawned agents must carry MAD_LAUNCHED=1; got %q", sp.env["MAD_LAUNCHED"])
+	}
 	// The session-liveness lease was acquired under the DAEMON-RETURNED key (Inv 9).
 	if len(conn.acquiredKeys) != 1 || conn.acquiredKeys[0] != wantKey {
 		t.Fatalf("session-liveness lease must be acquired under the daemon-returned key %q; got %v", wantKey, conn.acquiredKeys)

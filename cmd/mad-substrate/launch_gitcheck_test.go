@@ -45,3 +45,21 @@ func TestIntegratorStartFailsFastOutsideRepo(t *testing.T) {
 		t.Fatalf("error must name the not-a-git-repository cause, got: %v", err)
 	}
 }
+
+func TestIntegratorRunFailsFastOutsideRepo(t *testing.T) {
+	t.Chdir(t.TempDir())
+
+	cmd := integratorRunCmd()
+	var out bytes.Buffer
+	cmd.SetOut(&out)
+	cmd.SetErr(&out)
+	cmd.SetArgs([]string{"--no-keepalive", "--", "sh", "-c", "exit 0"})
+
+	err := cmd.Execute()
+	if err == nil {
+		t.Fatalf("integrator run in a non-repo must error, got success: %s", out.String())
+	}
+	if !strings.Contains(err.Error(), "not a git repository") {
+		t.Fatalf("error must name the not-a-git-repository cause, got: %v", err)
+	}
+}

@@ -249,13 +249,16 @@ func (ig *Integration) List() ([]Record, error) {
 // the recovery authority if a wake-up is missed.
 func (ig *Integration) Events(session, branch string, max int) ([]Event, error) {
 	return ig.store.pollEvents(session, branch, max, func(ev Event) bool {
+		if branch != "" && ev.Audience == "integrator" {
+			return false
+		}
 		return ig.authorizedForEvent(session, ev)
 	})
 }
 
 func (ig *Integration) authorizedForEvent(session string, ev Event) bool {
 	if ev.Audience == "integrator" {
-		return ig.holdsIntegratorPresence(session)
+		return strings.TrimSpace(session) != ""
 	}
 	branch, ok := branchFromAudience(ev.Audience)
 	if !ok || branch != ev.Branch {

@@ -400,8 +400,24 @@ func TestWireIntegratorClaude(t *testing.T) {
 	}
 
 	// Guidance markdown written + git-excluded.
-	if _, statErr := os.Stat(filepath.Join(wt, integratorGuideFile)); statErr != nil {
+	guideBytes, statErr := os.ReadFile(filepath.Join(wt, integratorGuideFile))
+	if statErr != nil {
 		t.Errorf("integrator guidance %q not written: %v", integratorGuideFile, statErr)
+	}
+	guide := string(guideBytes)
+	for _, want := range []string{
+		"sole merge path",
+		"ALWAYS drain pending first",
+		"mad_integration_pending",
+		"mad_integration_claim",
+		"mad_integration_approve",
+		"mad_integration_reject",
+		"[mad-substrate] N integration request(s) awaiting review",
+		"state is truth, nudges are wake-ups",
+	} {
+		if !strings.Contains(guide, want) {
+			t.Errorf("integrator guide missing %q:\n%s", want, guide)
+		}
 	}
 	assertContains(t, "Wrote", res.Wrote, ".mcp.json", ".claude/settings.local.json", integratorGuideFile)
 	assertContains(t, "Excluded", res.Excluded, ".mcp.json", ".claude/settings.local.json", integratorGuideFile)

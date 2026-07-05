@@ -1,6 +1,7 @@
 package launcher
 
 import (
+	"context"
 	"errors"
 	"io"
 	"os"
@@ -8,6 +9,7 @@ import (
 	"os/signal"
 	"sort"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -56,6 +58,10 @@ func RunPTY(target ExecTarget, extraEnv map[string]string, agent string, args []
 // buildExecCommand; a container grain with no container id fails CLOSED here
 // (BlockedExitCode), never an ungoverned host run.
 func runPTYIO(stdin io.Reader, stdout io.Writer, target ExecTarget, extraEnv map[string]string, agent string, args []string) (int, error) {
+	return runPTYIOWithOptions(stdin, stdout, target, extraEnv, agent, args, ptyRunOptions{})
+}
+
+func runPTYIOWithOptions(stdin io.Reader, stdout io.Writer, target ExecTarget, extraEnv map[string]string, agent string, args []string, opts ptyRunOptions) (int, error) {
 	c, err := buildExecCommand(target, extraEnv, agent, args)
 	if err != nil {
 		return BlockedExitCode, err
@@ -66,6 +72,8 @@ func runPTYIO(stdin io.Reader, stdout io.Writer, target ExecTarget, extraEnv map
 		return BlockedExitCode, err
 	}
 	defer func() { _ = ptmx.Close() }()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// Raw mode + window-size propagation, only when our stdin is a real terminal.
 	if f, ok := stdin.(*os.File); ok && term.IsTerminal(int(f.Fd())) {
@@ -122,7 +130,11 @@ func runPTYIO(stdin io.Reader, stdout io.Writer, target ExecTarget, extraEnv map
 		}
 	}()
 
-	go func() { _, _ = io.Copy(ptmx, stdin) }()
+	var ptmxMu sync.Mutex
+	activity := &inputActivity{}
+	ptmxWriter := lockedWriter{mu: &ptmxMu, w: ptmx}
+	go func() { _, _ = io.Copy(ptmxWriter, activityReader{r: stdin, activity: activity}) }()
+	startNudgeLoop(ctx, lockedWriter{mu: &ptmxMu, w: ptmx}, activity, opts.Nudges)
 
 	// Drain the child's output. On the NORMAL path this returns when the child exits
 	// (the PTY master sees EOF), so it fully flushes stdout BEFORE we return — the

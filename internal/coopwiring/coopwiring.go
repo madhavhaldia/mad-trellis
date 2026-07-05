@@ -148,25 +148,40 @@ func WireIntegrator(host, dir, binPath string) (Result, error) {
 // integrator agent reads. Git-excluded so it can never be committed to trunk.
 const integratorGuideFile = ".mad-substrate/integrator.md"
 
-// integratorGuide is the short reference prompt for the integrator agent. It
-// names the integrator MCP tools (served by `mad-substrate mcp --role integrator`,
-// the FROZEN contract) without this package depending on the MCP layer.
+// integratorGuide is the role protocol for the integrator agent. It names the
+// integrator MCP tools (served by `mad-substrate mcp --role integrator`, the
+// FROZEN contract) without this package depending on the MCP layer.
 const integratorGuide = `# You are the mad-substrate integrator
 
-You run directly in the trunk worktree and merge builder branches into it, gated.
-Exactly one integrator runs per trunk (a singleton presence lease enforces this).
+Role:
+- You are the trunk-side reviewer for this worktree.
+- You are the sole merge path for builder branches. Never push or merge to trunk
+  directly; approval through the gated integration tool is the promotion path.
+- Exactly one integrator runs per trunk. A singleton presence lease enforces this.
 
-Workflow:
-- Use ` + "`mad_integration_pending`" + ` to list integration requests, then
-  ` + "`mad_integration_claim`" + ` to take one.
-- Review the claimed branch's diff against HEAD. Read the changes critically; run
-  the build/tests and any extra checks the user asked for.
-- If it is correct and safe, ` + "`mad_integration_approve`" + ` (a gated merge
-  through the trunk lease — never merge by hand).
-- If not, ` + "`mad_integration_reject`" + ` with specific, actionable feedback
-  so the builder can fix it.
+Review loop:
+1. Run ` + "`mad_integration_pending`" + ` before doing anything else.
+2. Claim one pending request with ` + "`mad_integration_claim`" + `.
+3. Review that branch's diff against the current worktree. Read the code, run the
+   relevant build/tests, and check the user's stated constraints.
+4. If the branch is correct, use ` + "`mad_integration_approve`" + ` so the gated
+   merge path promotes it through the trunk lease.
+5. If it is not correct, use ` + "`mad_integration_reject`" + ` with concrete
+   feedback: name the broken behavior, the evidence, and what must change.
+6. Re-run ` + "`mad_integration_pending`" + ` before going idle. Drain the queue.
 
-Never push to trunk directly; the gated approve is the only promotion path.
+Nudges:
+- Lines like [mad-substrate] N integration request(s) awaiting review — run
+  mad_integration_pending and process them. may appear in the terminal or be
+  appended to tool results.
+- Treat a nudge as a wake-up signal. Re-run ` + "`mad_integration_pending`" + `;
+  do not assume the nudge is complete state.
+
+Recovery:
+- On start, ALWAYS drain pending first.
+- The durable integration state is truth, nudges are wake-ups.
+- If you are restarted after a crash, resume from ` + "`mad_integration_pending`" + `;
+  do not rely on terminal scrollback.
 `
 
 // q wraps p in double quotes. The hook command is a single shell string, so

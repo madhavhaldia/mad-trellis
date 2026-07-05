@@ -133,15 +133,19 @@ func TestEventsAuthorizationNonVacuous(t *testing.T) {
 		t.Fatalf("record holder must receive the branch event; got %+v", got)
 	}
 
-	if _, err := ig.Request("holder-session", "feature/presence", ""); err != nil {
+	igAny := newTestIntegrationWithOptions(t, Options{
+		HoldsIntegratorPresence: func(session string) bool { return session == "present-integrator" },
+	})
+	if _, err := igAny.Request("holder-session", "feature/presence", ""); err != nil {
 		t.Fatalf("request presence branch: %v", err)
 	}
-	if got := callEvents(t, ig, "no-presence", map[string]any{"branch": "feature/presence"}); len(got) != 0 {
-		t.Fatalf("consumer without integrator presence must receive no integrator events; got %+v", got)
-	}
-	got = callEvents(t, ig, "present-integrator", map[string]any{"branch": "feature/presence"})
+	got = callEvents(t, igAny, "no-presence", nil)
 	if len(got) != 1 || got[0].Kind != "integration.requested" {
-		t.Fatalf("consumer with integrator presence must receive the integrator event; got %+v", got)
+		t.Fatalf("any governed session may receive integrator-audience metadata; got %+v", got)
+	}
+	got = callEvents(t, igAny, "present-integrator", nil)
+	if len(got) != 1 || got[0].Kind != "integration.requested" {
+		t.Fatalf("integrator-present consumer must still receive the integrator event; got %+v", got)
 	}
 }
 

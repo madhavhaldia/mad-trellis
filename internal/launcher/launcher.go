@@ -108,6 +108,14 @@ type Config struct {
 	// only same-package tests set it (a short TTL keeps the renew-cadence test fast
 	// without a sleep-for-luck).
 	sessionLeaseTTL time.Duration
+
+	// Nudge seams are deliberately unexported: the launcher accepts no caller text,
+	// prompt, goal, or task for injection. Tests can stub the daemon-authored event
+	// source while production builds fixed-template nudges from integration.events.
+	nudgeSource       nudgeSource
+	nudgePollInterval time.Duration
+	nudgeQuietPeriod  time.Duration
+	nudgeRetryAfter   time.Duration
 }
 
 // Run executes one governed agent session, fail-closed end to end, and returns
@@ -128,9 +136,6 @@ func Run(cfg Config) (exitCode int, err error) {
 		dial = func(socket string) (Conn, error) { return rpcclient.Dial(socket) }
 	}
 	spawn := cfg.Spawn
-	if spawn == nil {
-		spawn = RunPTY
-	}
 	logf := cfg.Logf
 	if logf == nil {
 		logf = func(string, ...any) {}
@@ -248,6 +253,7 @@ func Run(cfg Config) (exitCode int, err error) {
 		env = map[string]string{}
 	}
 	env["MAD_SESSION_TOKEN"] = token
+	env["MAD_LAUNCHED"] = "1"
 
 	// The renew goroutine keeps the session-liveness lease alive at ~TTL/2 until
 	// clean exit. It is bounded (stops on stopRenew, joined by the teardown defer)
@@ -437,11 +443,37 @@ func Run(cfg Config) (exitCode int, err error) {
 	// A container grain with no container id fails CLOSED inside spawn (RunPTY →
 	// BlockedExitCode), never an ungoverned host run. The exit code (and any spawn
 	// error) flows back to the caller; the deferred teardown still runs.
-	code, serr := spawn(ExecTarget{
+	spawnTarget := ExecTarget{
 		Grain:       spec.Grain,
 		Cwd:         spec.Cwd,
 		ContainerID: spec.ContainerID,
-	}, env, agent, agentArgs)
+	}
+	var code int
+	var serr error
+	if spawn != nil {
+		code, serr = spawn(spawnTarget, env, agent, agentArgs)
+	} else {
+		ncfg := nudgeConfig{
+			Audience:     "branch:" + spec.Branch,
+			Branch:       spec.Branch,
+			Source:       cfg.nudgeSource,
+			PollInterval: cfg.nudgePollInterval,
+			QuietPeriod:  cfg.nudgeQuietPeriod,
+			RetryAfter:   cfg.nudgeRetryAfter,
+		}
+		var nudgeConn Conn
+		if ncfg.Source == nil && !nudgesDisabledByEnv() {
+			if conn, nerr := attachNudgeConn(dial, cfg.Socket, token); nerr == nil {
+				nudgeConn = conn
+				defer nudgeConn.Close()
+				ncfg.Source = nudgeSourceFromConn(nudgeConn, spec.Branch)
+				ncfg.Audit = nudgeAudit(nudgeConn)
+			} else {
+				logf("nudge: unavailable (%v); launching without PTY nudges", nerr)
+			}
+		}
+		code, serr = runPTYIOWithOptions(os.Stdin, os.Stdout, spawnTarget, env, agent, agentArgs, ptyRunOptions{Nudges: ncfg})
+	}
 
 	// (4) AUTOMATIC CONVERGENCE (Wing 2, BOTH grains). On a CLEAN exit the boundary
 	// branch is auto-converged onto the launch cwd's branch via internal/conductor,

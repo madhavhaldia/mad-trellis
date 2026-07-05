@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -16,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/madhavhaldia/mad-substrate/internal/coopwiring"
+	"github.com/madhavhaldia/mad-substrate/internal/launcher"
 	"github.com/madhavhaldia/mad-substrate/internal/rpcclient"
 	"github.com/madhavhaldia/mad-substrate/internal/runtimecfg"
 )
@@ -32,6 +34,8 @@ const integratorPresenceTTLHint = 60
 // as standard base64 of these raw bytes, mirroring internal/launcher/enforce.go.
 const integratorLeaseKey = "mad-substrate:integrator:v1"
 
+const defaultIntegratorPrompt = "You are the mad-substrate integrator for this trunk. Read .mad-substrate/integrator.md and run the review loop."
+
 func integratorCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "integrator",
@@ -41,7 +45,72 @@ func integratorCmd() *cobra.Command {
 			"(`mad-substrate mcp --role integrator`). It reviews builder branches and merges them through the " +
 			"gated trunk lease. Exactly one integrator runs per trunk, enforced by a singleton presence lease.",
 	}
-	cmd.AddCommand(integratorStartCmd(), integratorStatusCmd(), integratorStopCmd())
+	cmd.AddCommand(integratorStartCmd(), integratorRunCmd(), integratorStatusCmd(), integratorStopCmd())
+	return cmd
+}
+
+func integratorRunCmd() *cobra.Command {
+	var socket string
+	var noKeepalive bool
+	cmd := &cobra.Command{
+		Use:   "run [-- <agent> args...]",
+		Short: "Run the integrator agent in this terminal with PTY nudges and crash keepalive",
+		Long: "run wires the chosen agent (default: claude; also codex) with the integrator MCP toolset " +
+			"into the CURRENT worktree, then runs it directly under a PTY. The integrator runs on the trunk " +
+			"side by design; no isolation boundary is provisioned. Non-zero crashes restart with bounded " +
+			"backoff unless --no-keepalive is set.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			socket = runtimecfg.SocketPath(socket)
+			if !cwdInGitRepo() {
+				wd, _ := os.Getwd()
+				return fmt.Errorf("%s is not a git repository — the integrator merges through a git trunk; "+
+					"run `git init` here, or cd into a repo", wd)
+			}
+			agent := "claude"
+			var passthrough []string
+			if len(args) > 0 {
+				agent = args[0]
+				passthrough = args[1:]
+			}
+			dir, err := os.Getwd()
+			if err != nil {
+				return err
+			}
+			host := hostForAgent(agent)
+			bin, err := coopwiring.BinaryPath()
+			if err != nil {
+				return fmt.Errorf("resolve mad-substrate binary: %w", err)
+			}
+			res, werr := coopwiring.WireIntegrator(host, dir, bin)
+			if werr != nil {
+				fmt.Fprintf(cmd.ErrOrStderr(), "warning: integrator wiring incomplete: %v\n", werr)
+			}
+			agentArgs := buildIntegratorAgentArgs(agent, res.ExtraArgs, passthrough)
+			env := map[string]string{"MAD_SOCKET": socket}
+			opts := integratorRunOptions{
+				Socket:       socket,
+				Keepalive:    !noKeepalive,
+				Out:          cmd.OutOrStdout(),
+				Err:          cmd.ErrOrStderr(),
+				RapidWindow:  time.Minute,
+				RunOnce:      func() (int, error) { return launcher.RunIntegratorPTY(socket, dir, env, agent, agentArgs[1:]) },
+				Inspect:      inspectIntegrator,
+				Sleep:        time.Sleep,
+				WaitForRetry: waitForEnter(os.Stdin),
+				Now:          time.Now,
+			}
+			code, err := runIntegratorKeepalive(opts)
+			if err != nil {
+				return err
+			}
+			if code != 0 {
+				return errSilentExit{code: code}
+			}
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&socket, "socket", "", socketFlagHelp)
+	cmd.Flags().BoolVar(&noKeepalive, "no-keepalive", false, "do not restart the integrator agent after a non-zero exit")
 	return cmd
 }
 
@@ -194,6 +263,179 @@ func renderIntegratorPoolStatus(running, total int, reachable bool) string {
 		return "no integrator running (daemon not reachable)"
 	}
 	return fmt.Sprintf("integrators: %d/%d running", running, total)
+}
+
+func buildIntegratorAgentArgs(agent string, extraArgs, passArgs []string) []string {
+	agentCmd := make([]string, 0, 1+len(extraArgs)+len(passArgs)+1)
+	agentCmd = append(agentCmd, agent)
+	agentCmd = append(agentCmd, extraArgs...)
+	agentCmd = append(agentCmd, passArgs...)
+	if !hasUserPositionalPrompt(passArgs) {
+		agentCmd = append(agentCmd, defaultIntegratorPrompt)
+	}
+	return agentCmd
+}
+
+func hasUserPositionalPrompt(args []string) bool {
+	skipNext := false
+	afterDashDash := false
+	for _, arg := range args {
+		if skipNext {
+			skipNext = false
+			continue
+		}
+		if afterDashDash {
+			return strings.TrimSpace(arg) != ""
+		}
+		if arg == "--" {
+			afterDashDash = true
+			continue
+		}
+		if strings.HasPrefix(arg, "--") {
+			if strings.Contains(arg, "=") {
+				continue
+			}
+			if longAgentFlagTakesValue(arg) {
+				skipNext = true
+			}
+			continue
+		}
+		if strings.HasPrefix(arg, "-") {
+			if shortAgentFlagTakesValue(arg) {
+				skipNext = true
+			}
+			continue
+		}
+		return strings.TrimSpace(arg) != ""
+	}
+	return false
+}
+
+func longAgentFlagTakesValue(flag string) bool {
+	switch flag {
+	case "--model", "--config", "--permission-mode", "--output-format", "--system-prompt",
+		"--append-system-prompt", "--allowedTools", "--disallowedTools", "--add-dir",
+		"--cwd", "--sandbox", "--ask-for-approval", "--profile":
+		return true
+	default:
+		return false
+	}
+}
+
+func shortAgentFlagTakesValue(flag string) bool {
+	switch flag {
+	case "-m", "-c", "-p", "-C":
+		return true
+	default:
+		return false
+	}
+}
+
+type integratorRunOptions struct {
+	Socket       string
+	Keepalive    bool
+	Out          io.Writer
+	Err          io.Writer
+	RapidWindow  time.Duration
+	RunOnce      func() (int, error)
+	Inspect      func(string) (bool, string, bool)
+	Sleep        func(time.Duration)
+	WaitForRetry func() error
+	Now          func() time.Time
+}
+
+func runIntegratorKeepalive(opts integratorRunOptions) (int, error) {
+	if opts.RunOnce == nil {
+		return 1, fmt.Errorf("integrator run: no runner configured")
+	}
+	if opts.Out == nil {
+		opts.Out = io.Discard
+	}
+	if opts.Err == nil {
+		opts.Err = io.Discard
+	}
+	if opts.Inspect == nil {
+		opts.Inspect = inspectIntegrator
+	}
+	if opts.Sleep == nil {
+		opts.Sleep = time.Sleep
+	}
+	if opts.WaitForRetry == nil {
+		opts.WaitForRetry = func() error { return nil }
+	}
+	if opts.Now == nil {
+		opts.Now = time.Now
+	}
+	if opts.RapidWindow <= 0 {
+		opts.RapidWindow = time.Minute
+	}
+	if !opts.Keepalive {
+		return opts.RunOnce()
+	}
+
+	backoffs := []time.Duration{time.Second, 5 * time.Second, 15 * time.Second}
+	var failures []time.Time
+	for {
+		code, err := opts.RunOnce()
+		if code == 0 && err == nil {
+			return 0, nil
+		}
+		if terminalStopExit(code) {
+			return code, err
+		}
+
+		now := opts.Now()
+		cutoff := now.Add(-opts.RapidWindow)
+		kept := failures[:0]
+		for _, t := range failures {
+			if !t.Before(cutoff) {
+				kept = append(kept, t)
+			}
+		}
+		failures = append(kept, now)
+
+		parked := false
+		if len(failures) >= 3 {
+			fmt.Fprintln(opts.Out, "integrator crashed repeatedly — press enter to retry, ctrl-c to quit")
+			if werr := opts.WaitForRetry(); werr != nil {
+				return code, werr
+			}
+			failures = nil
+			parked = true
+		}
+
+		if held, holder, reachable := opts.Inspect(opts.Socket); reachable && held {
+			fmt.Fprintf(opts.Out, "another integrator is now running (holder %s); exiting\n", holder)
+			return 0, nil
+		}
+		if parked {
+			continue
+		}
+		idx := len(failures) - 1
+		if idx < 0 {
+			idx = 0
+		}
+		if idx >= len(backoffs) {
+			idx = len(backoffs) - 1
+		}
+		opts.Sleep(backoffs[idx])
+	}
+}
+
+func terminalStopExit(code int) bool {
+	switch code {
+	case 128 + int(syscall.SIGHUP), 128 + int(syscall.SIGINT), 128 + int(syscall.SIGTERM):
+		return true
+	default:
+		return false
+	}
+}
+
+func waitForEnter(r io.Reader) func() error {
+	return func() error {
+		_, err := bufio.NewReader(r).ReadString('\n')
+		return err
+	}
 }
 
 // inspectIntegrator dials the daemon and inspects the singleton integrator
@@ -433,21 +675,15 @@ func integratorPresent(socket string) (held bool, holder string, err error) {
 // reaching here).
 func startIntegrator(socket, dir, agent string, passArgs []string, printOnly bool) (opened bool, err error) {
 	_ = socket
-	host := hostForAgent(agent)
 	bin, err := coopwiring.BinaryPath()
 	if err != nil {
 		return false, fmt.Errorf("resolve mad-substrate binary: %w", err)
 	}
-	res, werr := coopwiring.WireIntegrator(host, dir, bin)
-	if werr != nil {
-		// Wiring is best-effort/fail-soft: log and still launch the agent.
-		fmt.Fprintf(os.Stderr, "warning: integrator wiring incomplete: %v\n", werr)
-	}
 
-	// Build the agent command: agent + injected wiring flags + passthrough.
-	agentCmd := make([]string, 0, 1+len(res.ExtraArgs)+len(passArgs))
-	agentCmd = append(agentCmd, agent)
-	agentCmd = append(agentCmd, res.ExtraArgs...)
+	// Open a terminal on the wrapper. `integrator run` performs the current-worktree
+	// wiring, role prompt, PTY nudges, and crash keepalive inside that terminal.
+	agentCmd := make([]string, 0, 5+len(passArgs))
+	agentCmd = append(agentCmd, bin, "integrator", "run", "--", agent)
 	agentCmd = append(agentCmd, passArgs...)
 
 	// Open a terminal (or print the command on fallback / printOnly).
