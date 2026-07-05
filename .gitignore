@@ -4,24 +4,26 @@ node_modules/
 .env.*
 *.log
 
-# Private design-session continuity lives OUTSIDE this repo (~/Documents/mad-substrate-session).
+# Private design-session continuity lives OUTSIDE this repo (~/Documents/mad-trellis-session).
 # Never track worklog/session files in the build repo.
 WORKLOG.md
+CLAUDE.md
 *.session.md
 /.session/
+docs/bridgeswarm-*.md
 
 # Host-orchestrator auto-journal surfaces are SUSPENDED in this build tree (see docs/0004 Anti-contamination).
 .wolf/
 /.wolf/
 
 # Per-agent worktrees + runtime live here (not tracked in the trunk).
-.mad-substrate/
+.mad-trellis/
 
 # Release artifacts (project 10b distribution-packaging): the built binaries
 # and checksums. versions.json is the SOURCE pin and stays tracked.
 /dist/
 
-# A bare `go build ./cmd/mad-substrate` (no -o) drops the binary at the repo root;
-# the release build always targets dist/mad-substrate, so a root binary is a stray.
-/mad-substrate
+# A bare `go build ./cmd/mad-trellis` (no -o) drops the binary at the repo root;
+# the release build always targets dist/mad-trellis, so a root binary is a stray.
+/mad-trellis
 .claude/

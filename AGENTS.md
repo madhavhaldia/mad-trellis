@@ -8,7 +8,7 @@ This file provides guidance to coding agents when working with code in this repo
 
 ## What this is
 
-mad-substrate is a **governance substrate for parallel agentic development** — not an orchestrator. It
+mad-trellis is a **governance substrate for parallel agentic development** — not an orchestrator. It
 sits *underneath* whatever agent/orchestrator drives the work and guarantees safe parallelism so no
 agent can corrupt another agent or the trunk. It ships as a single static, **cgo-free** Go binary
 (arbiter daemon + CLI + transparent launcher) plus a native-Go cooperative layer.
@@ -22,10 +22,10 @@ unsure, **classify upward** (lost parallelism is acceptable; corruption never is
 ## Commands
 
 ```sh
-make build       # cgo-free release binary -> dist/mad-substrate (CGO_ENABLED=0)
+make build       # cgo-free release binary -> dist/mad-trellis (CGO_ENABLED=0)
 make test        # full suite under the race detector (CGO_ENABLED=1 go test ./... -race)
 make conform     # the executable safety gate, run against a fresh build — exit 0 = GREEN
-make install     # build + put `mad-substrate` on PATH (~/.local/bin); also the upgrade path
+make install     # build + put `mad-trellis` on PATH (~/.local/bin); also the upgrade path
 make doctor      # environment self-check (paths, git floor, version pins)
 ```
 
@@ -48,8 +48,8 @@ are behind the `packaging` build tag: `CGO_ENABLED=1 go test -tags packaging ./i
 
 ## Architecture
 
-The CLI/daemon/launcher all live in **one binary** (`cmd/mad-substrate`); subcommands `mcp` and `hook`
-are the cooperative layer; `cmd/mad-substrate-relay` and `cmd/mad-substrate-coopprobe` are separate optional
+The CLI/daemon/launcher all live in **one binary** (`cmd/mad-trellis`); subcommands `mcp` and `hook`
+are the cooperative layer; `cmd/mad-trellis-relay` and `cmd/mad-trellis-coopprobe` are separate optional
 linux-only binaries for the container cooperative plane.
 
 Three boundaries map to the three resource kinds:
@@ -66,8 +66,8 @@ Three boundaries map to the three resource kinds:
 Supporting: **`internal/daemon`** is the arbiter — a single star-topology authority over a **frozen
 JSON-RPC contract** (`internal/protocol`) with connection-bound identity; **`internal/liveness`** is
 crash detection + reclaim (no lock outlives its holder, Inv 3); **`internal/runtimecfg`** resolves a
-per-repo runtime under `~/.mad-substrate/repos/<hash>/` (zero-config, per-repo socket/ledger/mediated
-trunk); **`internal/watch`** is the read-only TUI; **`internal/manifest`** is `mad-substrate.json`
+per-repo runtime under `~/.mad-trellis/repos/<hash>/` (zero-config, per-repo socket/ledger/mediated
+trunk); **`internal/watch`** is the read-only TUI; **`internal/manifest`** is `mad-trellis.json`
 resource classification.
 
 The **event-nudge plane** lives in `internal/integration` events plus launcher/MCP delivery: daemon-authored,
@@ -79,7 +79,7 @@ The **cooperative layer** (`internal/mcp` MCP server, `internal/coophook` hook h
 **advisory and fail-soft**: any daemon-layer failure falls back to *allowing* the operation — it must
 never make a governed session more fragile than a bare one.
 
-**`internal/conformance`** implements `mad-substrate conform`: it boots a real governed scenario through
+**`internal/conformance`** implements `mad-trellis conform`: it boots a real governed scenario through
 the public daemon + CLI contract only (a hermetic scratch daemon — never touches the real runtime).
 It is **AND-not-OR**: every safety clause must pass, each with a **non-vacuous control** that injects
 the violation and proves the check flips red (`check_*.go`). This is the safety authority for
@@ -87,7 +87,7 @@ self-hosting.
 
 ## Conventions that bite
 
-- **cgo-free is non-negotiable for the binary.** `CGO_ENABLED=0 go build ./cmd/mad-substrate` must
+- **cgo-free is non-negotiable for the binary.** `CGO_ENABLED=0 go build ./cmd/mad-trellis` must
   succeed. The race detector needs cgo — that's the test build, not the ship build. Builds stamp
   `main.version`/`main.commit` via `-ldflags -X`.
 - **The JSON-RPC daemon registry is frozen.** Adding/renaming/removing a daemon method is a
@@ -99,7 +99,7 @@ self-hosting.
 
 ## Self-hosting (context, not required for contribution)
 
-mad-substrate develops itself through its own governed trunk loop (`mad-substrate trunk submit/promote` onto
+mad-trellis develops itself through its own governed trunk loop (`mad-trellis trunk submit/promote` onto
 a mediated repo where a receive hook permits only `refs/heads/nm/*` and rejects pushes to `trunk`).
 See [docs/0005-governed-trunk-loop.md](./docs/0005-governed-trunk-loop.md). A normal fork-and-PR is
 all that's needed to contribute. Design docs: [docs/0001](./docs/0001-form-and-architecture.md)

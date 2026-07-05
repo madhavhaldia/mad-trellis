@@ -9,11 +9,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/madhavhaldia/mad-substrate/internal/buildinfo"
-	"github.com/madhavhaldia/mad-substrate/internal/coopembed"
-	"github.com/madhavhaldia/mad-substrate/internal/protocol"
-	"github.com/madhavhaldia/mad-substrate/internal/rpcclient"
-	"github.com/madhavhaldia/mad-substrate/internal/runtimecfg"
+	"github.com/madhavhaldia/mad-trellis/internal/buildinfo"
+	"github.com/madhavhaldia/mad-trellis/internal/coopembed"
+	"github.com/madhavhaldia/mad-trellis/internal/protocol"
+	"github.com/madhavhaldia/mad-trellis/internal/rpcclient"
+	"github.com/madhavhaldia/mad-trellis/internal/runtimecfg"
 )
 
 // defaultContainerImageHint mirrors substrate.defaultContainerImage for doctor's
@@ -41,7 +41,7 @@ func doctorCmd() *cobra.Command {
 	var socket string
 	cmd := &cobra.Command{
 		Use:          "doctor",
-		Short:        "Diagnose the local mad-substrate install (runtime paths, git floor, daemon reachability, version pins)",
+		Short:        "Diagnose the local mad-trellis install (runtime paths, git floor, daemon reachability, version pins)",
 		Args:         cobra.NoArgs,
 		SilenceUsage: true,
 		// Run (not RunE): doctor reports problems inline and controls its own exit
@@ -137,7 +137,7 @@ func doctorCmd() *cobra.Command {
 			}
 
 			// --- binary identity + pins --------------------------------------
-			fmt.Fprintf(out, "mad-substrate %s (commit %s, contract v%d)\n", version, commit, protocol.ContractVersion)
+			fmt.Fprintf(out, "mad-trellis %s (commit %s, contract v%d)\n", version, commit, protocol.ContractVersion)
 			if manErr == nil {
 				fmt.Fprintf(out, "go pin:    %s\n", m.Go)
 				fmt.Fprintf(out, "platforms: %v\n", m.Platforms)

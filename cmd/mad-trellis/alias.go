@@ -7,22 +7,22 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/madhavhaldia/mad-substrate/internal/launcher"
+	"github.com/madhavhaldia/mad-trellis/internal/launcher"
 )
 
 // defaultAliasName is the short convenience name for the binary. `ms` = the
-// initials of mad-substrate; it collides with nothing on a typical macOS/Linux
+// initials of mad-trellis; it collides with nothing on a typical macOS/Linux
 // PATH and reads cleanly (`ms launch -- claude`).
 const defaultAliasName = "ms"
 
 // aliasCmd creates a short convenience alias for the binary so users don't type
-// `mad-substrate` every time. It defaults to a SYMLINK next to the installed
+// `mad-trellis` every time. It defaults to a SYMLINK next to the installed
 // binary (shell-agnostic — works in scripts and every shell, unlike a shell
 // `alias`); `--print` instead emits a shell-rc line for users who prefer that.
 //
 // The alias name must NOT be an agent shim name (claude/codex) — those argv[0]
 // names are intercepted by the transparent launcher (Inv 13) and would NOT run
-// the normal CLI — nor "mad-substrate" itself. `ms`/`sub`/etc. are not supported
+// the normal CLI — nor "mad-trellis" itself. `ms`/`sub`/etc. are not supported
 // agents, so they fall straight through AgentFromArgv0 to the cobra CLI.
 func aliasCmd() *cobra.Command {
 	var dir string
@@ -31,7 +31,7 @@ func aliasCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "alias [name]",
 		Short: "Create a short convenience alias for the binary (default: ms)",
-		Long: "Create a short convenience alias so you can type `ms` instead of `mad-substrate`.\n" +
+		Long: "Create a short convenience alias so you can type `ms` instead of `mad-trellis`.\n" +
 			"By default this writes a symlink next to the installed binary (works in every\n" +
 			"shell and in scripts). Use --print to emit a shell-rc `alias` line instead.",
 		Args: cobra.MaximumNArgs(1),
@@ -45,9 +45,9 @@ func aliasCmd() *cobra.Command {
 			}
 			// Reject names that collide with the shim dispatch or the binary itself:
 			// a `claude`/`codex` argv[0] is routed through the governed launcher and
-			// would never run the CLI, and `mad-substrate` is the binary's own name.
-			if name == "mad-substrate" || launcher.IsSupportedAgent(name) {
-				return fmt.Errorf("%q is reserved (agent shim names and \"mad-substrate\" cannot be aliases); pick e.g. ms or sub", name)
+			// would never run the CLI, and `mad-trellis` is the binary's own name.
+			if name == "mad-trellis" || launcher.IsSupportedAgent(name) {
+				return fmt.Errorf("%q is reserved (agent shim names and \"mad-trellis\" cannot be aliases); pick e.g. ms or sub", name)
 			}
 
 			self, err := os.Executable()
@@ -87,12 +87,12 @@ func aliasCmd() *cobra.Command {
 
 			fmt.Fprintf(cmd.OutOrStdout(), "alias installed: %s -> %s\n", target, self)
 			if d := filepath.Dir(target); !dirOnPath(d) {
-				fmt.Fprintf(cmd.OutOrStdout(), "NOTE: %s is not on your PATH — add it or run `mad-substrate alias --dir <a-PATH-dir>`\n", d)
+				fmt.Fprintf(cmd.OutOrStdout(), "NOTE: %s is not on your PATH — add it or run `mad-trellis alias --dir <a-PATH-dir>`\n", d)
 			}
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&dir, "dir", "", "directory to place the alias in (default: alongside the mad-substrate binary)")
+	cmd.Flags().StringVar(&dir, "dir", "", "directory to place the alias in (default: alongside the mad-trellis binary)")
 	cmd.Flags().BoolVar(&printShell, "print", false, "print a shell-rc `alias` line instead of writing a symlink")
 	cmd.Flags().BoolVar(&force, "force", false, "overwrite an existing non-symlink file at the alias path")
 	return cmd

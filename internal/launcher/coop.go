@@ -12,8 +12,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/coop"
-	"github.com/madhavhaldia/mad-substrate/internal/coopembed"
+	"github.com/madhavhaldia/mad-trellis/internal/coop"
+	"github.com/madhavhaldia/mad-trellis/internal/coopembed"
 )
 
 // relayBytesFn resolves the embedded static linux relay payload for an arch. It is
@@ -22,11 +22,11 @@ import (
 // nothing). Production = coopembed.RelayBytes.
 var relayBytesFn = coopembed.RelayBytes
 
-// madSubstrateBytesFn resolves the embedded static linux mad-substrate binary for an arch. It
+// madTrellisBytesFn resolves the embedded static linux mad-trellis binary for an arch. It
 // is indirected through a package var ONLY so the in-container MCP-wiring tests can
 // inject a payload without a -tags coopembed build (the untagged stub embeds nothing).
-// Production = coopembed.MadSubstrateBytes.
-var madSubstrateBytesFn = coopembed.MadSubstrateBytes
+// Production = coopembed.MadTrellisBytes.
+var madTrellisBytesFn = coopembed.MadTrellisBytes
 
 // resolveRelayHostPath resolves the host path of the static linux relay binary to
 // stage into the container, AUTO-RESOLVING in precedence order:
@@ -51,7 +51,7 @@ func resolveRelayHostPath(goarch string) (path string, cleanup func(), err error
 	if !ok {
 		return "", nil, nil
 	}
-	f, err := os.CreateTemp("", "mad-substrate-relay-*")
+	f, err := os.CreateTemp("", "mad-trellis-relay-*")
 	if err != nil {
 		return "", nil, fmt.Errorf("create temp relay: %w", err)
 	}
@@ -78,7 +78,7 @@ func resolveRelayHostPath(goarch string) (path string, cleanup func(), err error
 // confined default is `--network none`, so an in-container cooperative adapter has
 // no path to the daemon. This pump tunnels the daemon socket into the container
 // over the STDIO of a SECOND `container exec` of the static relay binary
-// (cmd/mad-substrate-relay). Each adapter connection the relay announces (OPEN) gets
+// (cmd/mad-trellis-relay). Each adapter connection the relay announces (OPEN) gets
 // its OWN fresh daemon connection, so the adapter's own token-authed
 // session.attach (MAD_SESSION_TOKEN, already injected) rebinds that
 // connection to the launcher's session (Inv 4; multi-connection-per-session is
@@ -104,16 +104,16 @@ const (
 	// relayStageName is the staged relay's filename inside the writable scratch dir
 	// (which is bind-mounted at the SAME host path in the container, so the in-
 	// container exec path equals the host stage path).
-	relayStageName = ".mad-substrate-relay"
+	relayStageName = ".mad-trellis-relay"
 
-	// madSubstrateStageName is the staged in-container mad-substrate binary's filename inside
+	// madTrellisStageName is the staged in-container mad-trellis binary's filename inside
 	// the writable scratch dir (bind-mounted at the SAME host path in the container, so
 	// the in-container path equals the host stage path). The agent's MCP config points
-	// its `mad-substrate mcp` command at this path so a real claude/codex inside the guest
+	// its `mad-trellis mcp` command at this path so a real claude/codex inside the guest
 	// runs the staged binary, which dials MAD_SOCKET (the relay) under the
 	// session token. THIS binary is darwin and absent from the guest image — hence the
 	// staged linux binary from the embedded payload (coopembed).
-	madSubstrateStageName = ".mad-substrate"
+	madTrellisStageName = ".mad-trellis"
 
 	// coopReadyTimeout bounds how long startCoop waits for the relay to signal its
 	// listener is bound before giving up (fail-soft).
@@ -244,27 +244,27 @@ func stageRelay(hostPath, scratchDir string) (inContainerPath string, err error)
 	return dstPath, nil
 }
 
-// stageMadSubstrate writes the embedded static linux mad-substrate binary for goarch into the
-// agent's writable scratch dir at madSubstrateStageName (0755, atomic temp+rename) and
+// stageMadTrellis writes the embedded static linux mad-trellis binary for goarch into the
+// agent's writable scratch dir at madTrellisStageName (0755, atomic temp+rename) and
 // returns that path — which is ALSO the in-container path (the scratch is bind-mounted
-// at its identical host path in the container). It is the mad-substrate-binary analogue of
+// at its identical host path in the container). It is the mad-trellis-binary analogue of
 // stageRelay, except the source is the EMBEDDED payload (coopembed) rather than a host
 // file, since THIS launcher's own binary is darwin and absent from the guest image.
 // Returns an error when no payload is embedded for goarch (the untagged build) — the
 // caller treats that as fail-soft (the agent runs confined without in-container MCP
 // wiring).
-func stageMadSubstrate(scratchDir, goarch string) (inContainerPath string, err error) {
-	b, ok := madSubstrateBytesFn(goarch)
+func stageMadTrellis(scratchDir, goarch string) (inContainerPath string, err error) {
+	b, ok := madTrellisBytesFn(goarch)
 	if !ok {
-		return "", fmt.Errorf("no embedded linux mad-substrate binary for %s", goarch)
+		return "", fmt.Errorf("no embedded linux mad-trellis binary for %s", goarch)
 	}
-	return stageBytes(b, scratchDir, madSubstrateStageName)
+	return stageBytes(b, scratchDir, madTrellisStageName)
 }
 
 // stageBytes writes b into scratchDir/name (0755), atomically via a temp file + rename
 // so a concurrent exec can never observe a half-written binary, and returns the path —
 // which equals the in-container path (the scratch is bind-mounted at its identical host
-// path). Shared by the byte-sourced stage (the embedded mad-substrate binary); stageRelay
+// path). Shared by the byte-sourced stage (the embedded mad-trellis binary); stageRelay
 // stays file-sourced because its override may point at an arbitrary host file.
 func stageBytes(b []byte, scratchDir, name string) (string, error) {
 	if strings.TrimSpace(scratchDir) == "" {

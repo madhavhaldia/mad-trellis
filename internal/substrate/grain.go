@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/madhavhaldia/mad-substrate/internal/worktree"
+	"github.com/madhavhaldia/mad-trellis/internal/worktree"
 )
 
 // Grain is the isolation DIAL (Inv 10-grainswap): worktree (v1) → container → VM,

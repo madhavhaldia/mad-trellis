@@ -9,7 +9,7 @@ import (
 )
 
 // mediated.go implements the agent-facing half of Inv 7: each worktree's "origin"
-// is redirected to a mad-substrate-mediated HOLDING repo (a bare repo mad-substrate
+// is redirected to a mad-trellis-mediated HOLDING repo (a bare repo mad-trellis
 // owns), and the integrator is the sole party that bridges the holding repo to
 // real trunk. An agent's natural `git push` lands in the holding repo, never at
 // the canonical trunk / real origin.
@@ -63,21 +63,21 @@ func installTrunkProtectHook(bareRepo, trunkBranch string) error {
 		return err
 	}
 	script := `#!/bin/sh
-# mad-substrate mediated holding repo (project 6, Inv 7): agents may push ONLY their
+# mad-trellis mediated holding repo (project 6, Inv 7): agents may push ONLY their
 # own refs/heads/nm/* branches; the protected trunk ref is advanced solely by the
 # integrator via a LOCAL update-ref (which does not run receive hooks). Any other
 # ref push is denied (default-deny).
 ref="$1"
 case "$ref" in
   refs/heads/` + trunkBranch + `)
-    echo "mad-substrate: $ref is integrator-only — no agent push (Inv 7)" >&2
+    echo "mad-trellis: $ref is integrator-only — no agent push (Inv 7)" >&2
     exit 1 ;;
   refs/heads/nm/*)
     exit 0 ;;
-  refs/mad-substrate/*)
+  refs/mad-trellis/*)
     exit 0 ;;
   *)
-    echo "mad-substrate: pushing $ref is not permitted (agents push refs/heads/nm/*)" >&2
+    echo "mad-trellis: pushing $ref is not permitted (agents push refs/heads/nm/*)" >&2
     exit 1 ;;
 esac
 `

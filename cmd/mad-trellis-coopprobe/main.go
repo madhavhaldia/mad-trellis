@@ -1,4 +1,4 @@
-// Command mad-substrate-coopprobe is a tiny diagnostic / e2e client for the
+// Command mad-trellis-coopprobe is a tiny diagnostic / e2e client for the
 // cooperative-plane exec-stdio transport (#2). Run INSIDE a container, it connects
 // to the relay's unix socket (the agent's MAD_SOCKET), optionally attaches a
 // capability token to bind to the launcher's session, then verifies it can reach
@@ -7,7 +7,7 @@
 // socket path under --network none. It uses the real internal/rpcclient, so it
 // also exercises the exact client an adapter would. cgo-free; stdlib + rpcclient.
 //
-// usage: mad-substrate-coopprobe <socket> [token] [expect-session]
+// usage: mad-trellis-coopprobe <socket> [token] [expect-session]
 package main
 
 import (
@@ -15,12 +15,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/madhavhaldia/mad-substrate/internal/rpcclient"
+	"github.com/madhavhaldia/mad-trellis/internal/rpcclient"
 )
 
 func main() {
 	if len(os.Args) < 2 {
-		fail("usage: mad-substrate-coopprobe <socket> [token] [expect-session]")
+		fail("usage: mad-trellis-coopprobe <socket> [token] [expect-session]")
 	}
 	sock := os.Args[1]
 	var token, expect string
@@ -57,7 +57,7 @@ func main() {
 		fail("session.whoami: %v", err)
 	}
 
-	key := base64.StdEncoding.EncodeToString([]byte("mad-substrate:coop:probe"))
+	key := base64.StdEncoding.EncodeToString([]byte("mad-trellis:coop:probe"))
 	var acq struct {
 		Granted bool   `json:"granted"`
 		Holder  string `json:"holder"`

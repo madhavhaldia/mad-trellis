@@ -7,17 +7,17 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/daemon"
-	"github.com/madhavhaldia/mad-substrate/internal/rpcclient"
+	"github.com/madhavhaldia/mad-trellis/internal/daemon"
+	"github.com/madhavhaldia/mad-trellis/internal/rpcclient"
 )
 
 // START-IF-ABSENT (chafe C12): restore the ambient UX — a governed launch should
 // not require the operator to have started the daemon by hand — WITHOUT weakening
 // the fail-closed guarantee (Inv 4). ensureDaemon is the SINGLE auto-start path
-// shared by the shim dispatch and `mad-substrate launch`:
+// shared by the shim dispatch and `mad-trellis launch`:
 //
 //   - If a daemon already holds the flock for the socket, do nothing.
-//   - Otherwise spawn THIS binary (`mad-substrate daemon`) in the background with
+//   - Otherwise spawn THIS binary (`mad-trellis daemon`) in the background with
 //     cwd = the current working dir, and wait (bounded) for the socket to accept.
 //     The flock single-instance path dedupes a race: a concurrent auto-start (or
 //     a hand-started daemon) simply loses the bind and exits; we still observe
@@ -67,17 +67,17 @@ func ensureDaemon(socket, selfBin string, logf func(string, ...any)) error {
 		if daemonResponsive(socket) {
 			return nil
 		}
-		return fmt.Errorf("daemon at %s holds the lock but is not responding (diag.health timed out); stop it with `mad-substrate daemon stop` and retry", socket)
+		return fmt.Errorf("daemon at %s holds the lock but is not responding (diag.health timed out); stop it with `mad-trellis daemon stop` and retry", socket)
 	}
 	if selfBin == "" {
-		return fmt.Errorf("cannot auto-start daemon: the mad-substrate binary path is unknown")
+		return fmt.Errorf("cannot auto-start daemon: the mad-trellis binary path is unknown")
 	}
 	wd, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("cannot auto-start daemon: %w", err)
 	}
 
-	logf("mad-substrate: daemon not running — auto-starting...")
+	logf("mad-trellis: daemon not running — auto-starting...")
 
 	cmd := exec.Command(selfBin, "daemon", "--socket", socket)
 	cmd.Dir = wd // RepoRoot: the daemon loads the manifest + derives the ledger here

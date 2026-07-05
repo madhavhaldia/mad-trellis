@@ -1,6 +1,6 @@
 name: Release
 
-# Tagged-release pipeline for mad-substrate. Fires on any `v*` tag push and produces
+# Tagged-release pipeline for mad-trellis. Fires on any `v*` tag push and produces
 # a signed, SBOM-accompanied GitHub Release carrying the darwin/arm64 (cooperative-
 # plane embedded) binary plus the cross-built linux amd64/arm64 binaries.
 #
@@ -55,7 +55,7 @@ jobs:
       - name: Checksums -> dist/SHA256SUMS
         run: |
           cd dist
-          shasum -a 256 mad-substrate mad-substrate-linux-amd64 mad-substrate-linux-arm64 > SHA256SUMS
+          shasum -a 256 mad-trellis mad-trellis-linux-amd64 mad-trellis-linux-arm64 > SHA256SUMS
           cat SHA256SUMS
 
       - name: Generate SBOM (SPDX JSON) over the repository
@@ -63,7 +63,7 @@ jobs:
         with:
           path: .
           format: spdx-json
-          output-file: dist/mad-substrate.spdx.json
+          output-file: dist/mad-trellis.spdx.json
 
       - name: Install cosign
         uses: sigstore/cosign-installer@v3
@@ -99,10 +99,10 @@ jobs:
           # Tags with a hyphen (e.g. v0.1.0-rc1) are pre-releases.
           prerelease: ${{ contains(github.ref_name, '-') }}
           files: |
-            dist/mad-substrate
-            dist/mad-substrate-linux-amd64
-            dist/mad-substrate-linux-arm64
+            dist/mad-trellis
+            dist/mad-trellis-linux-amd64
+            dist/mad-trellis-linux-arm64
             dist/SHA256SUMS
             dist/SHA256SUMS.sig
             dist/SHA256SUMS.pem
-            dist/mad-substrate.spdx.json
+            dist/mad-trellis.spdx.json

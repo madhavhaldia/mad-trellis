@@ -100,7 +100,7 @@ type Recoverer struct {
 	intReclaim IntegrationClaimReclaimer // OPTIONAL (nil → the stale-claim sweep is skipped)
 	audit      AuditFunc
 	trunkKey   []byte // the convergent key whose expiry signals a mid-promote death
-	sessionKey []byte // the session-liveness key PREFIX ("mad-substrate:session:v1:") whose
+	sessionKey []byte // the session-liveness key PREFIX ("mad-trellis:session:v1:") whose
 	// expiry signals a SESSION death (the launcher stopped renewing): a session whose
 	// session-liveness lease expired AND that holds no other live lease is dead, so its
 	// boundary is reclaimed (T2 — the canonical session-death signal, closing C16/C17).
@@ -119,7 +119,7 @@ func New(leases LeaseReclaimer, integ IntegrationAborter, bound BoundaryReclaime
 // NewWithSessionKey constructs a Recoverer that ALSO treats an expired
 // session-liveness lease (whose key begins with sessionKeyPrefix) as a session
 // death for boundary recovery (T2). sessionKeyPrefix is the raw
-// "mad-substrate:session:v1:" prefix; an expired lease under it whose holder holds NO
+// "mad-trellis:session:v1:" prefix; an expired lease under it whose holder holds NO
 // other live lease (Inv 17) has its boundary torn down. nil/empty prefix → the
 // session-death signal is disabled (the pre-T2 trunk-only behavior).
 func NewWithSessionKey(leases LeaseReclaimer, integ IntegrationAborter, bound BoundaryReclaimer, trunkKey, sessionKeyPrefix []byte, audit AuditFunc) (*Recoverer, error) {

@@ -3,8 +3,8 @@ package integrator
 import (
 	"encoding/json"
 
-	"github.com/madhavhaldia/mad-substrate/internal/daemon"
-	"github.com/madhavhaldia/mad-substrate/internal/protocol"
+	"github.com/madhavhaldia/mad-trellis/internal/daemon"
+	"github.com/madhavhaldia/mad-trellis/internal/protocol"
 )
 
 // RegisterMethods wires the integrator onto the daemon's JSON-RPC registry — the

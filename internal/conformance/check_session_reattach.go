@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/rpcclient"
+	"github.com/madhavhaldia/mad-trellis/internal/rpcclient"
 )
 
 // check_session_reattach.go is the P0 #4 probe: a DAEMON RESTART must not reclaim a
@@ -21,7 +21,7 @@ import (
 // boundary intact.
 //
 // BLACK BOX. Driven over the PUBLIC surface only (session.whoami / mint_token /
-// attach, lease.acquire / renew, substrate.provision, and `mad-substrate recover` to
+// attach, lease.acquire / renew, substrate.provision, and `mad-trellis recover` to
 // force a liveness scan deterministically) — no internal state reads. The
 // assertion is OBSERVABLE: the boundary's worktree dir is present (survived) /
 // absent (reclaimed) on disk after the restart + a forced liveness scan.

@@ -1,5 +1,5 @@
 // Package launcher implements project 5 (session-launcher-shim): the
-// parent-launches-child core that makes mad-substrate governance AMBIENT (Inv 13) —
+// parent-launches-child core that makes mad-trellis governance AMBIENT (Inv 13) —
 // launching a supported agent CLI in a governed repo transparently runs it
 // inside the isolation boundary the substrate built, with NO change to how the
 // user drives the session.
@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/substrate"
+	"github.com/madhavhaldia/mad-trellis/internal/substrate"
 )
 
 // Conn is the minimal held-connection daemon surface the launcher needs. It is

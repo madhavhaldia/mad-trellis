@@ -23,7 +23,7 @@ var (
 
 const (
 	unavailableLine    = "unavailable (daemon not reachable)"
-	integratorLeaseKey = "mad-substrate:integrator:v1"
+	integratorLeaseKey = "mad-trellis:integrator:v1"
 	footerLine         = "read-only · q quit · tab focus · j/k scroll · newest at bottom"
 )
 
@@ -63,7 +63,7 @@ func (m Model) View() string {
 }
 
 func (m Model) renderConnecting() string {
-	return headerStyle.Render("mad-substrate watch") + dimStyle.Render(" — connecting…")
+	return headerStyle.Render("mad-trellis watch") + dimStyle.Render(" — connecting…")
 }
 
 func (m Model) renderUnreachable() string {
@@ -71,8 +71,8 @@ func (m Model) renderUnreachable() string {
 	if sock == "" {
 		sock = "(unknown socket)"
 	}
-	msg := fmt.Sprintf("cannot reach daemon at %s\n\nThe watch surface is non-load-bearing: nothing is wrong with governance.\nStart `mad-substrate daemon`, or press q to quit.", sock)
-	return titleStyle.Render("mad-substrate watch") + "\n\n" + msg
+	msg := fmt.Sprintf("cannot reach daemon at %s\n\nThe watch surface is non-load-bearing: nothing is wrong with governance.\nStart `mad-trellis daemon`, or press q to quit.", sock)
+	return titleStyle.Render("mad-trellis watch") + "\n\n" + msg
 }
 
 func (m Model) statusStripLines() []string {
@@ -81,7 +81,7 @@ func (m Model) statusStripLines() []string {
 		who = "(session unavailable)"
 	}
 	lines := []string{
-		headerStyle.Render(fmt.Sprintf("mad-substrate watch — read-only · watcher session %s", sessShort(who))),
+		headerStyle.Render(fmt.Sprintf("mad-trellis watch — read-only · watcher session %s", sessShort(who))),
 	}
 
 	requested, claimed := m.openReviewCounts()
@@ -106,7 +106,7 @@ func (m Model) statusStripLines() []string {
 
 	lines = append(lines, fmt.Sprintf("%s · %s · %s · %s", m.trunkStatus(), reviewText, integratorText, leaseText))
 	if m.snap.Reviews.Available && m.snap.Leases.Available && requested > 0 && !present {
-		lines = append(lines, alertStyle.Render(fmt.Sprintf("integrator: ABSENT — %d request(s) waiting · run: mad-substrate integrator start", requested)))
+		lines = append(lines, alertStyle.Render(fmt.Sprintf("integrator: ABSENT — %d request(s) waiting · run: mad-trellis integrator start", requested)))
 	}
 	return lines
 }

@@ -9,7 +9,7 @@
 // predicates they feed live in the untagged linkage.go, unit-tested by the
 // untagged predicates_test.go on every host.
 //
-// linkage_test.go is the cgo carve-out guard. mad-substrate depends on the PURE-Go
+// linkage_test.go is the cgo carve-out guard. mad-trellis depends on the PURE-Go
 // modernc.org/sqlite (a Go MODULE dependency) precisely so the shipped binary is
 // cgo-free — it links ONLY system libraries, never a bundled libsqlite3 or any
 // homebrew/third-party C library. This file proves that twice over:
@@ -153,14 +153,14 @@ func binaryCgoEnabled(t *testing.T, bin string) string {
 // concrete (a SQLite that contributes ZERO C linkage).
 func TestLinkageCgoFree(t *testing.T) {
 	root := repoRoot(t)
-	bin := filepath.Join(t.TempDir(), "mad-substrate")
+	bin := filepath.Join(t.TempDir(), "mad-trellis")
 
-	// Build cgo-free + -trimpath (reproducible) straight from ./cmd/mad-substrate.
-	build := exec.Command("go", "build", "-trimpath", "-o", bin, "./cmd/mad-substrate")
+	// Build cgo-free + -trimpath (reproducible) straight from ./cmd/mad-trellis.
+	build := exec.Command("go", "build", "-trimpath", "-o", bin, "./cmd/mad-trellis")
 	build.Dir = root
 	build.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if out, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("CGO_ENABLED=0 build of ./cmd/mad-substrate failed: %v\n%s", err, out)
+		t.Fatalf("CGO_ENABLED=0 build of ./cmd/mad-trellis failed: %v\n%s", err, out)
 	}
 
 	// (1) AUTHORITATIVE (OS-INDEPENDENT): the binary's embedded build setting must
@@ -281,16 +281,16 @@ func main() {
 	}
 }
 
-// TestCgoFreeBuildSucceeds asserts the CGO_ENABLED=0 build of ./cmd/mad-substrate
+// TestCgoFreeBuildSucceeds asserts the CGO_ENABLED=0 build of ./cmd/mad-trellis
 // exits 0. A cgo import sneaking into the dependency graph (e.g. swapping the
 // pure-Go sqlite for a cgo driver) would make this build fail, catching the
 // regression before it ever reaches the linkage assertions above.
 func TestCgoFreeBuildSucceeds(t *testing.T) {
 	root := repoRoot(t)
-	build := exec.Command("go", "build", "-o", filepath.Join(t.TempDir(), "mad-substrate"), "./cmd/mad-substrate")
+	build := exec.Command("go", "build", "-o", filepath.Join(t.TempDir(), "mad-trellis"), "./cmd/mad-trellis")
 	build.Dir = root
 	build.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if out, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("CGO_ENABLED=0 go build ./cmd/mad-substrate must succeed (a cgo import would break it): %v\n%s", err, out)
+		t.Fatalf("CGO_ENABLED=0 go build ./cmd/mad-trellis must succeed (a cgo import would break it): %v\n%s", err, out)
 	}
 }

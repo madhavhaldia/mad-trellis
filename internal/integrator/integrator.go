@@ -471,7 +471,7 @@ func (it *Integrator) landed(rec Record) (bool, error) {
 }
 
 func (it *Integrator) mergeMessage(id, branch string) string {
-	return fmt.Sprintf("mad-substrate: integrate %s\n\nintegration-id: %s", branch, id)
+	return fmt.Sprintf("mad-trellis: integrate %s\n\nintegration-id: %s", branch, id)
 }
 
 // baseArg maps an empty base (unborn trunk) to the create-only CAS sentinel.

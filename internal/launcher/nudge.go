@@ -221,7 +221,7 @@ func (s *nudgeDeliveryState) waitQuiet(ctx context.Context) bool {
 
 func buildNudgeText(audience, branch string, events []nudgeEvent) (string, bool) {
 	if audience == "integrator" {
-		line := "[mad-substrate] " + strconv.Itoa(len(events)) + " integration request(s) awaiting review — run mad_integration_pending and process them."
+		line := "[mad-trellis] " + strconv.Itoa(len(events)) + " integration request(s) awaiting review — run mad_integration_pending and process them."
 		return line + "\r", true
 	}
 
@@ -233,9 +233,9 @@ func buildNudgeText(audience, branch string, events []nudgeEvent) (string, bool)
 	for _, kind := range kinds {
 		switch kind {
 		case "integration.verdict":
-			lines = append(lines, "[mad-substrate] your integration request on "+branch+" has a verdict — run mad_integration_status.")
+			lines = append(lines, "[mad-trellis] your integration request on "+branch+" has a verdict — run mad_integration_status.")
 		case "integration.claimed":
-			lines = append(lines, "[mad-substrate] your integration request on "+branch+" was claimed for review.")
+			lines = append(lines, "[mad-trellis] your integration request on "+branch+" was claimed for review.")
 		}
 	}
 	if len(lines) == 0 {

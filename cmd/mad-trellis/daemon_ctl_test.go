@@ -8,11 +8,11 @@ import (
 )
 
 // daemonCmd must wire the two control subcommands (status, stop) AND keep its own
-// RunE so the bare `mad-substrate daemon` still starts the daemon.
+// RunE so the bare `mad-trellis daemon` still starts the daemon.
 func TestDaemonCmdHasControlSubcommands(t *testing.T) {
 	d := daemonCmd()
 	if d.RunE == nil {
-		t.Fatal("daemon command lost its RunE — bare `mad-substrate daemon` must still start the daemon")
+		t.Fatal("daemon command lost its RunE — bare `mad-trellis daemon` must still start the daemon")
 	}
 	want := map[string]bool{"status": false, "stop": false}
 	for _, sub := range d.Commands() {

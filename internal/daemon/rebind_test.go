@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/madhavhaldia/mad-substrate/internal/protocol"
+	"github.com/madhavhaldia/mad-trellis/internal/protocol"
 )
 
 func TestRebindSessionChangesIdentitySeenByLaterCall(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/protocol"
+	"github.com/madhavhaldia/mad-trellis/internal/protocol"
 )
 
 // clearEnv wipes every cooperative-client input so each Load case starts from a
@@ -32,7 +32,7 @@ func clearEnv(t *testing.T) {
 func TestLoadDefaults(t *testing.T) {
 	clearEnv(t)
 	// Pin the runtime dir so Socket is deterministic and we don't touch the real
-	// ~/.mad-substrate.
+	// ~/.mad-trellis.
 	rd := t.TempDir()
 	t.Setenv("MAD_RUNTIME_DIR", rd)
 

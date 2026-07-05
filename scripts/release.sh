@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/release.sh — the reproducible mad-substrate release pipeline (project 10b).
+# scripts/release.sh — the reproducible mad-trellis release pipeline (project 10b).
 #
 # The pipeline is ORDERED so that the 10a conformance gate is load-bearing: a RED
 # gate aborts the run BEFORE any artifact or checksum is produced. We never ship a
@@ -29,7 +29,7 @@ cd "$REPO"
 VERSION="$(git describe --tags --always --dirty 2>/dev/null || echo dev)"
 COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 
-echo "==> mad-substrate release  version=$VERSION  commit=$COMMIT"
+echo "==> mad-trellis release  version=$VERSION  commit=$COMMIT"
 
 # --- Step 1: clean working tree -------------------------------------------------
 # A reproducible release must build from a committed state. ALLOW_DIRTY=1 is the
@@ -40,7 +40,7 @@ if [ -n "$(git status --porcelain)" ] && [ "${ALLOW_DIRTY:-}" != 1 ]; then
 fi
 
 # --- Step 2: build the cgo-free release binary (darwin host) --------------------
-echo "==> [2/7] build  ->  dist/mad-substrate (cgo-free, trimpath, stripped)"
+echo "==> [2/7] build  ->  dist/mad-trellis (cgo-free, trimpath, stripped)"
 make build
 
 # --- Step 3: THE GATE (load-bearing) -------------------------------------------
@@ -48,7 +48,7 @@ make build
 # abort HERE, before producing any artifact or checksum — a red gate must never
 # yield a shippable bundle.
 echo "==> [3/7] conformance gate (10a) — the load-bearing safety check"
-if ! ./dist/mad-substrate conform; then
+if ! ./dist/mad-trellis conform; then
 	echo "release REFUSED: the 10a conformance gate is RED — not safe to ship" >&2
 	exit 1
 fi
@@ -67,7 +67,7 @@ make linkage smoke
 # gated here — linux smoke/conform require a linux CI host — but they ARE shipped
 # artifacts, so we build and checksum them. The darwin gate above remains the
 # load-bearing release gate.
-echo "==> [5/7] linux cross-build  ->  dist/mad-substrate-linux-{amd64,arm64} (build-only on darwin)"
+echo "==> [5/7] linux cross-build  ->  dist/mad-trellis-linux-{amd64,arm64} (build-only on darwin)"
 make build-linux
 
 # --- Step 6: checksums ---------------------------------------------------------
@@ -75,12 +75,12 @@ make build-linux
 # linux binaries. The cooperative layer ships inside these binaries (native Go),
 # so there is no separate adapter artifact to checksum.
 echo "==> [6/7] checksums  ->  dist/SHA256SUMS"
-( cd dist && shasum -a 256 mad-substrate mad-substrate-linux-amd64 mad-substrate-linux-arm64 > SHA256SUMS )
+( cd dist && shasum -a 256 mad-trellis mad-trellis-linux-amd64 mad-trellis-linux-arm64 > SHA256SUMS )
 
 # --- Step 7: artifact manifest -------------------------------------------------
 echo "==> [7/7] release artifacts in dist/:"
 # ls -l with human sizes; portable across BSD (macOS) and GNU ls.
-ls -lh dist/mad-substrate dist/mad-substrate-linux-amd64 dist/mad-substrate-linux-arm64 dist/SHA256SUMS
+ls -lh dist/mad-trellis dist/mad-trellis-linux-amd64 dist/mad-trellis-linux-arm64 dist/SHA256SUMS
 echo
 echo "==> SHA256SUMS:"
 cat dist/SHA256SUMS

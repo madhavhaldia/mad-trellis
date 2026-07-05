@@ -4,7 +4,7 @@ import "strings"
 
 // GoalDispatchFlagNames is the denylist of affordance names that would turn the
 // launcher from a transparent session WRAPPER into a task DISPATCHER — which is
-// exactly what mad-substrate must never become (Inv 13: "takes no goals and
+// exactly what mad-trellis must never become (Inv 13: "takes no goals and
 // dispatches no tasks"; docs/0003 12-intake: keep the Layer-2 task-intake seam
 // EMPTY). The launcher CLI is audited against this list at test time, with a
 // positive control (adding such a flag turns AuditNoGoals non-empty → the
@@ -12,7 +12,7 @@ import "strings"
 //
 // The unit of interaction is the SESSION (the user drives it live), never the
 // GOAL. The agent's own flags are opaque pass-through and are NOT audited here —
-// this guards mad-substrate's OWN surface from sprouting a dispatch affordance.
+// this guards mad-trellis's OWN surface from sprouting a dispatch affordance.
 var GoalDispatchFlagNames = []string{
 	"goal", "task", "prompt", "objective", "instruction", "assign", "dispatch", "spawn-task", "todo",
 }

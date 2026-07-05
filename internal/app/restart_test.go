@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/daemon"
+	"github.com/madhavhaldia/mad-trellis/internal/daemon"
 )
 
 func TestSessionReattachSurvivesDaemonRestart(t *testing.T) {

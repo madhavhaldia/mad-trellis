@@ -15,7 +15,7 @@ import (
 // trust real_reachable: it enumerates EVERY env value the gate produced and scans
 // each in RAW + base64/hex/url-DECODED forms for any routable scheme or a
 // non-sentinel host:port, asserting ONLY the non-routable sentinel
-// (mad-substrate-proxy:// / mad-substrate-deny:// / mad-substrate-mock:// / mad-substrate-denied://)
+// (mad-trellis-proxy:// / mad-trellis-deny:// / mad-trellis-mock:// / mad-trellis-denied://)
 // appears.
 //
 // It is a PURE function over an env map (no daemon), so a Control can feed it a
@@ -34,7 +34,7 @@ var routableSchemes = []string{
 // env-spec may carry — non-routable by construction (a tool honoring the env fails
 // closed). Anything else with a scheme/host:port is a leak.
 var nonRoutableSentinelPrefixes = []string{
-	"mad-substrate-proxy://", "mad-substrate-mock://", "mad-substrate-deny://", "mad-substrate-denied://",
+	"mad-trellis-proxy://", "mad-trellis-mock://", "mad-trellis-deny://", "mad-trellis-denied://",
 }
 
 // endpointLeak describes a detected routable endpoint leak (the env key, the form
@@ -51,7 +51,7 @@ func (l endpointLeak) String() string {
 
 // detectEndpointLeak scans an env map for a routable endpoint in any value's raw
 // OR base64/hex/url-decoded form. allowedSentinel is the sentinel prefix this
-// env-spec is permitted to carry (e.g. "mad-substrate-proxy://"); a value EQUAL to a
+// env-spec is permitted to carry (e.g. "mad-trellis-proxy://"); a value EQUAL to a
 // permitted sentinel is fine. It returns (leak, true) on the FIRST leak found.
 //
 // CRITICAL: it does NOT consult any real_reachable flag — the env bytes are the
@@ -60,7 +60,7 @@ func (l endpointLeak) String() string {
 func detectEndpointLeak(env map[string]string, allowedSentinel string) (endpointLeak, bool) {
 	for k, v := range env {
 		// A value that IS exactly a permitted non-routable sentinel is fine; skip the
-		// sentinel's own scheme so "mad-substrate-proxy://" is not flagged as routable.
+		// sentinel's own scheme so "mad-trellis-proxy://" is not flagged as routable.
 		forms := decodeForms(v)
 		for form, decoded := range forms {
 			// Strip the permitted sentinel so its presence never trips the scan, but
@@ -69,7 +69,7 @@ func detectEndpointLeak(env map[string]string, allowedSentinel string) (endpoint
 			if allowedSentinel != "" {
 				scan = strings.ReplaceAll(scan, allowedSentinel, "")
 			}
-			// Also strip the generic mad-substrate-* sentinels (they are non-routable).
+			// Also strip the generic mad-trellis-* sentinels (they are non-routable).
 			for _, sp := range nonRoutableSentinelPrefixes {
 				scan = strings.ReplaceAll(scan, sp, "")
 			}
@@ -103,7 +103,7 @@ func firstRoutable(s string) string {
 }
 
 // findHostPort finds a bare host:port token (a dotted/host name followed by :port)
-// that is NOT part of a mad-substrate sentinel (those were stripped already).
+// that is NOT part of a mad-trellis sentinel (those were stripped already).
 func findHostPort(s string) string {
 	for _, tok := range strings.FieldsFunc(s, func(r rune) bool {
 		return r == ' ' || r == '\n' || r == '\t' || r == '"' || r == ',' || r == '\''
@@ -118,7 +118,7 @@ func findHostPort(s string) string {
 			continue
 		}
 		// Host must look like a real host: contain a dot (FQDN/ip) or be a known name.
-		if strings.Contains(host, ".") && !strings.HasPrefix(host, "mad-substrate-") {
+		if strings.Contains(host, ".") && !strings.HasPrefix(host, "mad-trellis-") {
 			return tok
 		}
 	}

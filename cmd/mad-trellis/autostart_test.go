@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/daemon"
+	"github.com/madhavhaldia/mad-trellis/internal/daemon"
 )
 
 var (
@@ -23,7 +23,7 @@ var (
 	builtBinErr  error
 )
 
-// buildBinary compiles the mad-substrate CLI to a temp path once per test binary and
+// buildBinary compiles the mad-trellis CLI to a temp path once per test binary and
 // returns its path. cgo-free, matching the production build constraint.
 func buildBinary(t *testing.T) string {
 	t.Helper()
@@ -33,7 +33,7 @@ func buildBinary(t *testing.T) string {
 			builtBinErr = err
 			return
 		}
-		out := filepath.Join(dir, "mad-substrate")
+		out := filepath.Join(dir, "mad-trellis")
 		cmd := exec.Command("go", "build", "-o", out, ".")
 		cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
 		if b, err := cmd.CombinedOutput(); err != nil {
@@ -44,7 +44,7 @@ func buildBinary(t *testing.T) string {
 		builtBinPath = out
 	})
 	if builtBinErr != nil {
-		t.Fatalf("build mad-substrate binary: %v\n%s", builtBinErr, builtBinPath)
+		t.Fatalf("build mad-trellis binary: %v\n%s", builtBinErr, builtBinPath)
 	}
 	return builtBinPath
 }
@@ -111,7 +111,7 @@ func TestEnsureDaemonFailClosedUnknownSelf(t *testing.T) {
 }
 
 // END-TO-END governed launch with start-if-absent: invoke the built binary as
-// `mad-substrate launch -- <fake-agent>` with NO daemon running. It must auto-start a
+// `mad-trellis launch -- <fake-agent>` with NO daemon running. It must auto-start a
 // daemon and then run the fake agent (governed), exiting with the agent's own
 // code — NOT BlockedExitCode.
 func TestLaunchAutoStartsDaemonAndRunsAgentEndToEnd(t *testing.T) {

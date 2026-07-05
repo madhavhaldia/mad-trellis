@@ -6,10 +6,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/madhavhaldia/mad-substrate/internal/launcher"
-	"github.com/madhavhaldia/mad-substrate/internal/rpcclient"
-	"github.com/madhavhaldia/mad-substrate/internal/runtimecfg"
-	"github.com/madhavhaldia/mad-substrate/internal/substrate"
+	"github.com/madhavhaldia/mad-trellis/internal/launcher"
+	"github.com/madhavhaldia/mad-trellis/internal/rpcclient"
+	"github.com/madhavhaldia/mad-trellis/internal/runtimecfg"
+	"github.com/madhavhaldia/mad-trellis/internal/substrate"
 )
 
 func spawnCmd() *cobra.Command {
@@ -22,9 +22,9 @@ func spawnCmd() *cobra.Command {
 			"worktree off HEAD on a fresh nm/<session> branch, a disjoint port block, and private " +
 			"scratch/cache/state dirs (Inv 1) — keyed off the daemon's unspoofable session identity. With " +
 			"no command it prints where to work; with `-- <cmd>` it runs the command in the boundary on a " +
-			"PTY, with the env-spec applied. Integrate the branch back with `mad-substrate integrate <branch>`. " +
+			"PTY, with the env-spec applied. Integrate the branch back with `mad-trellis integrate <branch>`. " +
 			"(spawn is the fire-and-forget BOOTSTRAP — it does NOT hold the session or tear the boundary " +
-			"down, leaking the daemon's reservation, chafe C6; the transparent launcher `mad-substrate launch` " +
+			"down, leaking the daemon's reservation, chafe C6; the transparent launcher `mad-trellis launch` " +
 			"is the governed, clean-exit path.)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			socket = runtimecfg.SocketPath(socket)
@@ -39,7 +39,7 @@ func spawnCmd() *cobra.Command {
 			}
 			cli, err := rpcclient.Dial(socket)
 			if err != nil {
-				return fmt.Errorf("cannot reach the daemon (%w) — start it with `mad-substrate daemon`", err)
+				return fmt.Errorf("cannot reach the daemon (%w) — start it with `mad-trellis daemon`", err)
 			}
 			defer cli.Close()
 
@@ -63,16 +63,16 @@ func spawnCmd() *cobra.Command {
 					// survives a home/worktree dir containing spaces.
 					fmt.Fprintf(cmd.OutOrStdout(),
 						"  # agent runs INSIDE the container at %s; host clone: %s\n"+
-							"  # then: mad-substrate integrate --from '%s' %s\n",
+							"  # then: mad-trellis integrate --from '%s' %s\n",
 						spec.Cwd, spec.HostWorktree, spec.HostWorktree, spec.Branch)
 				} else {
 					fmt.Fprintf(cmd.OutOrStdout(),
-						"  cd %s   # work here, then: mad-substrate integrate %s\n", spec.Cwd, spec.Branch)
+						"  cd %s   # work here, then: mad-trellis integrate %s\n", spec.Cwd, spec.Branch)
 				}
 				return nil
 			}
 			// Reuse the launcher's hardened PTY plumbing (Inv 13). spawn stays
-			// fire-and-forget; the governed clean-exit path is `mad-substrate launch`.
+			// fire-and-forget; the governed clean-exit path is `mad-trellis launch`.
 			// The exec target is wire-driven, so a container-grain boundary execs the
 			// command INSIDE the container exactly as `launch` does.
 			code, err := launcher.RunPTY(launcher.ExecTarget{

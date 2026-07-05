@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/rpcclient"
+	"github.com/madhavhaldia/mad-trellis/internal/rpcclient"
 )
 
 // TestCoopLiveContainerE2E is the FULL-STACK live proof of the cooperative-plane
@@ -26,8 +26,8 @@ import (
 // daemon, e.g.:
 //
 //	MAD_COOP_LIVE_SOCKET=/tmp/nm2e.sock \
-//	MAD_COOP_LIVE_RELAY=/tmp/nm2-bin/mad-substrate-relay \
-//	MAD_COOP_LIVE_PROBE=/tmp/nm2-bin/mad-substrate-coopprobe \
+//	MAD_COOP_LIVE_RELAY=/tmp/nm2-bin/mad-trellis-relay \
+//	MAD_COOP_LIVE_PROBE=/tmp/nm2-bin/mad-trellis-coopprobe \
 //	go test ./internal/launcher -run TestCoopLiveContainerE2E -v
 //
 // The daemon at the socket MUST already be on the container grain
@@ -91,7 +91,7 @@ func TestCoopLiveContainerE2E(t *testing.T) {
 
 	// (4) Stage the probe into the same writable scratch (mounted at the same path
 	// in-container) and exec it INSIDE the container, connecting to the relay socket.
-	probeDst := filepath.Join(scratch, ".mad-substrate-coopprobe")
+	probeDst := filepath.Join(scratch, ".mad-trellis-coopprobe")
 	if err := copyExecutable(probe, probeDst); err != nil {
 		t.Fatalf("stage probe: %v", err)
 	}

@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/madhavhaldia/mad-substrate/internal/repoid"
+	"github.com/madhavhaldia/mad-trellis/internal/repoid"
 )
 
 // StateRoot returns the per-agent local-state root for (repoAbs, slug) WITHOUT
 // creating it — the SAME deterministic derivation provisionState uses. Exported so
-// a client-side teardown (`mad-substrate despawn`) can reclaim an abandoned spawn's
+// a client-side teardown (`mad-trellis despawn`) can reclaim an abandoned spawn's
 // state dir without the daemon. Returns "" for an empty or unsafe slug (one that
 // could traverse outside the per-repo state base).
 func StateRoot(repoAbs, slug string) string {
@@ -39,7 +39,7 @@ func stateBase(repoAbs string) string {
 		if err != nil {
 			home = os.TempDir()
 		}
-		root = filepath.Join(home, ".mad-substrate", "state")
+		root = filepath.Join(home, ".mad-trellis", "state")
 	}
 	h := sha256.Sum256([]byte(repoid.Canonical(repoAbs)))
 	return filepath.Join(root, hex.EncodeToString(h[:8]))

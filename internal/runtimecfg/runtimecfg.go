@@ -1,14 +1,14 @@
-// Package runtimecfg is the SINGLE resolver for the mad-substrate per-user runtime
+// Package runtimecfg is the SINGLE resolver for the mad-trellis per-user runtime
 // directory and daemon socket, shared by EVERY Go surface (the CLI subcommands,
 // the daemon, the shim dispatch). Centralizing it kills the prior drift where
-// each command rolled its own `if socket=="" { socket = ~/.mad-substrate/... }` and
+// each command rolled its own `if socket=="" { socket = ~/.mad-trellis/... }` and
 // only the daemon honored MAD_RUNTIME_DIR.
 //
 // Precedence, highest to lowest:
 //   - socket:      explicit --socket flag  >  MAD_SOCKET  >  <runtime-dir>/daemon.sock
-//   - runtime-dir: MAD_RUNTIME_DIR    >  MAD_HOME    >  ~/.mad-substrate
+//   - runtime-dir: MAD_RUNTIME_DIR    >  MAD_HOME    >  ~/.mad-trellis
 //
-// The native cooperative subcommands (`mad-substrate mcp` / `hook`, via
+// The native cooperative subcommands (`mad-trellis mcp` / `hook`, via
 // internal/coopclient) reuse this package directly, so a governed agent and the
 // CLI always agree on the socket.
 package runtimecfg
@@ -28,12 +28,12 @@ const (
 	SourceEnvSocket  = "MAD_SOCKET"
 	SourceRuntimeDir = "MAD_RUNTIME_DIR"
 	SourceHome       = "MAD_HOME"
-	SourceDefault    = "default (~/.mad-substrate)"
+	SourceDefault    = "default (~/.mad-trellis)"
 	SourcePerRepo    = "per-repo (auto)"
 	socketBasename   = "daemon.sock"
 )
 
-// homeBaseDir is the global mad-substrate base (~/.mad-substrate), the root under which the
+// homeBaseDir is the global mad-trellis base (~/.mad-trellis), the root under which the
 // bare default runtime AND per-repo runtimes live. Degrades to the temp dir when
 // there is no home dir (rare), matching the old defaultRuntimeDir fallback.
 func homeBaseDir() string {
@@ -41,11 +41,11 @@ func homeBaseDir() string {
 	if err != nil {
 		home = os.TempDir()
 	}
-	return filepath.Join(home, ".mad-substrate")
+	return filepath.Join(home, ".mad-trellis")
 }
 
 // PerRepoRuntimeDir returns the per-repo runtime home for repoID: a stable,
-// collision-resistant subdir of the global base (<home>/.mad-substrate/repos/<hash>,
+// collision-resistant subdir of the global base (<home>/.mad-trellis/repos/<hash>,
 // hash = sha256(repoID)[:8]). PURE — no git, no side effect, no MkdirAll — so it
 // is unit-testable. The cmd layer resolves repoID (the repo's canonical, shared
 // git COMMON dir — identical for the main worktree and every linked worktree of one
@@ -123,7 +123,7 @@ func SocketSource(flagOverride string) (path, source string) {
 }
 
 // IntegratorPidfile returns the path of the pidfile a presence-holding integrator
-// MCP server writes so `mad-substrate integrator stop` can find and signal it. It
+// MCP server writes so `mad-trellis integrator stop` can find and signal it. It
 // lives in the SAME directory as the socket/ledger (the per-repo runtime dir), so
 // the server and the CLI agree on it even under an explicit MAD_SOCKET. socketPath
 // is the resolved daemon socket (SocketPath); presenceKeyRaw is the RAW presence-

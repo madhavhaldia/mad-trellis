@@ -121,7 +121,7 @@ func Converge(cl RPCClient, spec Spec) Result {
 		return Result{Status: StatusError, Reason: "rev-parse HEAD: " + head}
 	}
 	if head != spec.TargetBranch {
-		return Result{Status: StatusSkipped, Reason: "target branch drifted (HEAD=" + head + ", expected " + spec.TargetBranch + "); run `mad-substrate integrate` manually"}
+		return Result{Status: StatusSkipped, Reason: "target branch drifted (HEAD=" + head + ", expected " + spec.TargetBranch + "); run `mad-trellis integrate` manually"}
 	}
 
 	// 3. Nothing-to-converge guard (read-only, NO lease).
@@ -143,7 +143,7 @@ func Converge(cl RPCClient, spec Spec) Result {
 		return Result{Status: StatusError, Reason: "status --porcelain: " + dirty}
 	}
 	if strings.TrimSpace(dirty) != "" {
-		return Result{Status: StatusSkipped, Reason: spec.TargetBranch + " has uncommitted changes to tracked files; commit or stash, then run `mad-substrate integrate " + spec.Branch + "`"}
+		return Result{Status: StatusSkipped, Reason: spec.TargetBranch + " has uncommitted changes to tracked files; commit or stash, then run `mad-trellis integrate " + spec.Branch + "`"}
 	}
 
 	// 5. Run the gate (only if configured), with NO lease held — it validates

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/madhavhaldia/mad-substrate/internal/daemon"
+	"github.com/madhavhaldia/mad-trellis/internal/daemon"
 )
 
 // newTestIntegration builds an Integration over a temp on-disk ledger.

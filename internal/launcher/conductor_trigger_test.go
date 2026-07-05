@@ -7,7 +7,7 @@ import (
 
 // TestMain defaults MAD_CONDUCTOR=off for the WHOLE package. The launcher
 // tests run with os.Getwd() inside a real git worktree on a real branch and with
-// no mad-substrate.json, so the conductor would otherwise fire by DEFAULT (enabled)
+// no mad-trellis.json, so the conductor would otherwise fire by DEFAULT (enabled)
 // on every clean-exit case. The pre-conductor tests assert teardown ordering on a
 // SINGLE shared fake Conn, and the fake `dial` hands that same Conn back for the
 // conductor's FRESH dial too — so leaving auto-converge on would let the

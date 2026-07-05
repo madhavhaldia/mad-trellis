@@ -36,15 +36,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/daemon"
+	"github.com/madhavhaldia/mad-trellis/internal/daemon"
 )
 
 // sessionLeaseKeyPrefix is the v1 session-liveness lease key namespace. The
 // per-session liveness lease key is sessionLeaseKeyPrefix + <sessionID>; its TTL
 // expiry is the ONE TRUE session-death signal (a normal durable ledger lease the
 // launcher acquires and renews). The format mirrors the manifest's key
-// conventions (e.g. "mad-substrate:trunk:v1").
-const sessionLeaseKeyPrefix = "mad-substrate:session:v1:"
+// conventions (e.g. "mad-trellis:trunk:v1").
+const sessionLeaseKeyPrefix = "mad-trellis:session:v1:"
 
 // LivenessKey returns the (raw) session-liveness lease key for a session id. The
 // daemon returns its base64 form from mint_token so the launcher never fabricates
@@ -53,7 +53,7 @@ func LivenessKey(id daemon.SessionID) []byte {
 	return []byte(sessionLeaseKeyPrefix + string(id))
 }
 
-// LivenessKeyPrefix returns the (raw) "mad-substrate:session:v1:" prefix every
+// LivenessKeyPrefix returns the (raw) "mad-trellis:session:v1:" prefix every
 // session-liveness lease key begins with. Liveness (project 8) keys boundary
 // recovery off an expired lease under this prefix being the canonical session-
 // death signal (T2); compose passes it so the SAME format anchors minting,

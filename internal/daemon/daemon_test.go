@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/protocol"
+	"github.com/madhavhaldia/mad-trellis/internal/protocol"
 )
 
 // --- Inv 5-arbiter: the daemon is a PROCESS singleton -----------------------

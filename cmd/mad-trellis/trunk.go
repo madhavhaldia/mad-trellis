@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/madhavhaldia/mad-substrate/internal/rpcclient"
-	"github.com/madhavhaldia/mad-substrate/internal/runtimecfg"
+	"github.com/madhavhaldia/mad-trellis/internal/rpcclient"
+	"github.com/madhavhaldia/mad-trellis/internal/runtimecfg"
 )
 
 // trunkCmd is the CLI surface for project 6 (integrator-trunk): the mediated,
@@ -30,7 +30,7 @@ func trunkCmd() *cobra.Command {
 		s := runtimecfg.SocketPath(socket)
 		cl, err := rpcclient.Dial(s)
 		if err != nil {
-			return nil, fmt.Errorf("daemon not reachable (%w) — start `mad-substrate daemon`", err)
+			return nil, fmt.Errorf("daemon not reachable (%w) — start `mad-trellis daemon`", err)
 		}
 		return cl, nil
 	}

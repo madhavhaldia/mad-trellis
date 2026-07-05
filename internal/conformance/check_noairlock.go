@@ -51,7 +51,7 @@ func (noAirlockClosedLoop) Clause() string {
 
 // airlockMarker uniquely tags the produced work so its presence on the trunk tree
 // proves the SAME bytes were consumed (not coincidental content).
-const airlockMarker = "mad-substrate-CLOSED-LOOP-MARKER-7f3a"
+const airlockMarker = "mad-trellis-CLOSED-LOOP-MARKER-7f3a"
 
 func (c noAirlockClosedLoop) Run(s *Scratch) Result {
 	agent, err := s.NewAgent("loop")

@@ -94,7 +94,7 @@ type LeaseKey []byte
 // by necessity (one ref, one atomic CAS under TrunkKey, Inv 7), so two agents
 // converging onto trunk still serialize at the merge — these keys are not
 // parallel merges and must not be mis-sold as such.
-var TrunkKey = LeaseKey("mad-substrate:trunk:v1")
+var TrunkKey = LeaseKey("mad-trellis:trunk:v1")
 
 // convergentKeyPrefix namespaces per-resource convergent lease keys so `locks`
 // can recover the resource for display and they never collide with the
@@ -102,7 +102,7 @@ var TrunkKey = LeaseKey("mad-substrate:trunk:v1")
 // convergent keys under "external:" so a per-name external key is never mistaken
 // for a per-path key (and vice versa).
 const (
-	convergentKeyPrefix         = "mad-substrate:convergent:v1:"
+	convergentKeyPrefix         = "mad-trellis:convergent:v1:"
 	externalConvergentKeyPrefix = convergentKeyPrefix + "external:"
 )
 

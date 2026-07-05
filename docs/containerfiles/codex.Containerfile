@@ -1,6 +1,6 @@
-# Reference image for the mad-substrate container grain — OpenAI Codex.
+# Reference image for the mad-trellis container grain — OpenAI Codex.
 #
-# mad-substrate ships NO image (see docs/0006-container-grain-image-contract.md). This is
+# mad-trellis ships NO image (see docs/0006-container-grain-image-contract.md). This is
 # a recipe you build LOCALLY. codex runs fine as root, so this is the simple case:
 # the agent binary on PATH, git, a POSIX sh (node:20 is Debian-based), and HOME=/root
 # (the grain's default MAD_CONTAINER_HOME). codex's credentials are a portable
@@ -14,7 +14,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # The agent binary on PATH. `npm i -g` picks up the latest codex release at build
-# time — re-run the build to upgrade (the agent cadence is decoupled from mad-substrate).
+# time — re-run the build to upgrade (the agent cadence is decoupled from mad-trellis).
 RUN npm install -g @openai/codex
 
 # Run as root with HOME=/root, matching the grain's default MAD_CONTAINER_HOME.

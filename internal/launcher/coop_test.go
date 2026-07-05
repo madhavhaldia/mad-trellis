@@ -10,8 +10,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/coop"
-	"github.com/madhavhaldia/mad-substrate/internal/substrate"
+	"github.com/madhavhaldia/mad-trellis/internal/coop"
+	"github.com/madhavhaldia/mad-trellis/internal/substrate"
 )
 
 // TestCoopPumpDemuxEchoMultiStream drives the pump core with in-memory tunnel

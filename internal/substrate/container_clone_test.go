@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/madhavhaldia/mad-substrate/internal/worktree"
+	"github.com/madhavhaldia/mad-trellis/internal/worktree"
 )
 
 // flagValue returns the argument following the first occurrence of flag in args

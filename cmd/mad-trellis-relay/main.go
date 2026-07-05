@@ -1,4 +1,4 @@
-// Command mad-substrate-relay is the in-container half of the cooperative-plane
+// Command mad-trellis-relay is the in-container half of the cooperative-plane
 // exec-stdio transport (#2). It is a tiny STATIC linux binary the launcher stages
 // into the confined container and runs as a SECOND `container exec` whose stdio is
 // the host↔guest tunnel.
@@ -33,7 +33,7 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/madhavhaldia/mad-substrate/internal/coop"
+	"github.com/madhavhaldia/mad-trellis/internal/coop"
 )
 
 const (
@@ -45,10 +45,10 @@ const (
 )
 
 func main() {
-	log.SetPrefix("mad-substrate-relay: ")
+	log.SetPrefix("mad-trellis-relay: ")
 	log.SetFlags(0)
 	if len(os.Args) < 2 || os.Args[1] == "" {
-		log.Fatal("usage: mad-substrate-relay <unix-socket-path>")
+		log.Fatal("usage: mad-trellis-relay <unix-socket-path>")
 	}
 	sockPath := os.Args[1]
 

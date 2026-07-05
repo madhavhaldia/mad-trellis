@@ -39,7 +39,7 @@ destination-authored address. If an event is missed, startup reconciliation thro
 Delivery is best-effort and fail-soft. Failure to deliver a nudge must never make a governed
 session more fragile than a bare agent session.
 
-1. **Launcher PTY injection.** A `mad-substrate launch` builder session and an
+1. **Launcher PTY injection.** A `mad-trellis launch` builder session and an
    `integrator run` session poll `integration.events`. When the terminal has been quiet long
    enough, the launcher writes one fixed-template line plus Enter into the child PTY. The
    politeness guard defers while user input is fresh, so a nudge does not interleave with a
@@ -88,7 +88,7 @@ it and the daemon returned the authoritative row.
 
 ## Integrator Resurrection
 
-`mad-substrate integrator run` is the trunk-side wrapper for the integrator agent. It wires the
+`mad-trellis integrator run` is the trunk-side wrapper for the integrator agent. It wires the
 integrator MCP role, runs the agent under a PTY, polls integrator-audience events, and restarts
 after non-zero crashes with bounded backoff unless `--no-keepalive` is set.
 
@@ -97,7 +97,7 @@ integrator presence lease. If another integrator is now live, this wrapper exits
 fighting it. Repeated rapid crashes park the loop until the operator presses Enter. The daemon
 still owns the lease truth; the wrapper is only the process-level resurrection policy.
 
-`mad-substrate integrator start` opens a visible terminal on `integrator run`. It is a
+`mad-trellis integrator start` opens a visible terminal on `integrator run`. It is a
 convenience surface, not a daemon dispatcher.
 
 ## Lifecycle

@@ -12,7 +12,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/madhavhaldia/mad-substrate/internal/manifest"
+	"github.com/madhavhaldia/mad-trellis/internal/manifest"
 )
 
 // --- helpers ----------------------------------------------------------------

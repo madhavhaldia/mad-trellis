@@ -1,6 +1,6 @@
-# Reference Containerfiles for the mad-substrate container grain
+# Reference Containerfiles for the mad-trellis container grain
 
-**mad-substrate ships NO container images.** These are *reference recipes* — you build them
+**mad-trellis ships NO container images.** These are *reference recipes* — you build them
 **locally** and point the container grain at the result with `MAD_CONTAINER_IMAGE`.
 The full rationale and the complete image contract live in
 [../0006-container-grain-image-contract.md](../0006-container-grain-image-contract.md).
@@ -46,7 +46,7 @@ export MAD_CONTAINER_HOME=/home/node
   grain also pins the run platform to the host arch by default — see
   `MAD_CONTAINER_PLATFORM`).
 - Upgrading the agent is just rebuilding: `npm i -g` in the Containerfile picks up the
-  latest agent release. The agent's release cadence is decoupled from mad-substrate's by design.
+  latest agent release. The agent's release cadence is decoupled from mad-trellis's by design.
 - Cooperative credential forwarding lands your host login inside the container with no
   re-login (codex: `~/.codex` dir mount; claude: live macOS-Keychain `.credentials.json`).
   It is withheld when `MAD_CONTAINER_CONFINED=1` and can be disabled with

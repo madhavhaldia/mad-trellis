@@ -19,7 +19,7 @@ import (
 // Under the container grain Apple `container` has NO host→container unix-socket
 // forward and the agent has no host path to the daemon socket, so a cooperative
 // client inside the container reaches the arbiter ONLY through the relay tunnel
-// (cmd/mad-substrate-relay exec'd into the container, its stdio pumped to the daemon by
+// (cmd/mad-trellis-relay exec'd into the container, its stdio pumped to the daemon by
 // the host half). The client then presents the launcher's daemon-minted capability
 // token via session.attach, which REBINDS its forwarded connection to the
 // launcher's session — so a lease it takes INSIDE the container is held by the
@@ -65,7 +65,7 @@ const coopOwner = "cooperative-plane/in-container-adapter"
 // in-container /tmp (never /work, so it cannot pollute the agent's git clone),
 // mirroring the launcher's coopSocketPath. The relay + the probe both run inside the
 // SAME container, so both resolve this path; it is NOT a host path.
-const coopInContainerSocket = "/tmp/mad-substrate-coop.sock"
+const coopInContainerSocket = "/tmp/mad-trellis-coop.sock"
 
 // coopRelayEnv / coopProbeEnv name the host paths of the prebuilt STATIC LINUX relay
 // and probe binaries staged into the container. They are reused from the launcher's
@@ -258,7 +258,7 @@ func (s *Scratch) coopEstablishSession(cb *ContainerBoundary) (sess, scratch, to
 // against `expect` (when non-empty). Returns the combined output + a non-nil error
 // iff the in-container command exited non-zero (a rejected attach exits non-zero).
 func runCoopProbe(containerID, scratchDir, probeHostPath, sock, token, expect string) (string, error) {
-	staged, err := stageCoopBinary(probeHostPath, filepath.Join(scratchDir, ".mad-substrate-coopprobe"))
+	staged, err := stageCoopBinary(probeHostPath, filepath.Join(scratchDir, ".mad-trellis-coopprobe"))
 	if err != nil {
 		return "", fmt.Errorf("stage probe: %w", err)
 	}
@@ -319,7 +319,7 @@ func stageCoopBinary(hostPath, dstPath string) (string, error) {
 // codec + pump because the conformance package may NOT import internal/launcher or
 // internal/coop.
 func (s *Scratch) startCoopTunnel(containerID, scratchDir, relayHostPath string) (stop func(), err error) {
-	staged, err := stageCoopBinary(relayHostPath, filepath.Join(scratchDir, ".mad-substrate-relay"))
+	staged, err := stageCoopBinary(relayHostPath, filepath.Join(scratchDir, ".mad-trellis-relay"))
 	if err != nil {
 		return nil, fmt.Errorf("stage relay: %w", err)
 	}

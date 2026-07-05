@@ -6,12 +6,12 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/madhavhaldia/mad-substrate/internal/rpcclient"
+	"github.com/madhavhaldia/mad-trellis/internal/rpcclient"
 )
 
 // check_integration.go proves the Wing 3 integration plane is a CONVERGENCE-SCOPED
 // review/verdict queue, NOT a general agent-to-agent messaging mesh (the thing
-// mad-substrate must never have). The surface is integration.request / pending /
+// mad-trellis must never have). The surface is integration.request / pending /
 // claim / verdict / status / events: a BUILDER requests integration of its
 // committed boundary branch, an INTEGRATOR claims + approves/rejects with feedback,
 // and integration.events emits daemon-authored wake-ups. The danger of any new

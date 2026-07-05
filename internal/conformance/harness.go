@@ -31,7 +31,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/rpcclient"
+	"github.com/madhavhaldia/mad-trellis/internal/rpcclient"
 )
 
 // ----------------------------------------------------------------------------
@@ -118,10 +118,10 @@ func Checks() []Check { return append([]Check(nil), registered...) }
 
 // ----------------------------------------------------------------------------
 // Scratch — the hermetic runtime: its OWN daemon on a SCRATCH runtime dir that
-// NEVER touches ~/.mad-substrate or any already-running daemon.
+// NEVER touches ~/.mad-trellis or any already-running daemon.
 // ----------------------------------------------------------------------------
 
-// Scratch is one fully-isolated mad-substrate world: a scratch runtime dir (socket +
+// Scratch is one fully-isolated mad-trellis world: a scratch runtime dir (socket +
 // ledger + trunk.git), a scratch governed git repo (the daemon's cwd / RepoRoot),
 // scratch worktree + state dirs, and a single daemon process bound to a SHORT
 // /tmp socket (macOS unix-socket path limit). Every spawned process — the daemon
@@ -129,7 +129,7 @@ func Checks() []Check { return append([]Check(nil), registered...) }
 // MAD_STATE_DIR pointed at the scratch and --socket passed explicitly, so
 // the harness is hermetic by construction.
 type Scratch struct {
-	Binary   string // the resolved mad-substrate binary path
+	Binary   string // the resolved mad-trellis binary path
 	Root     string // the scratch runtime dir (socket + ledger.db + trunk.git live here)
 	Socket   string // the short /tmp daemon socket path
 	RepoDir  string // the governed git repo (the daemon's cwd / RepoRoot)
@@ -165,12 +165,12 @@ type Scratch struct {
 }
 
 // NewScratch mints a hermetic world and STARTS its daemon, keying off socket
-// readiness (NOT a sleep). binary is the mad-substrate binary to drive (the conform
+// readiness (NOT a sleep). binary is the mad-trellis binary to drive (the conform
 // CLI passes os.Executable(); the tagged test go-builds one to a temp dir). The
 // returned Scratch must be Closed (kills the daemon, removes scratch dirs).
 func NewScratch(binary string) (*Scratch, error) {
 	if binary == "" {
-		return nil, fmt.Errorf("conformance: a mad-substrate binary path is required")
+		return nil, fmt.Errorf("conformance: a mad-trellis binary path is required")
 	}
 	abs, err := filepath.Abs(binary)
 	if err != nil {
@@ -219,7 +219,7 @@ func NewScratch(binary string) (*Scratch, error) {
 
 // env returns the hermetic environment every spawned process inherits — the
 // runtime/worktree/state dirs pointed at the scratch so nothing touches the real
-// ~/.mad-substrate. GIT_CONFIG_GLOBAL/SYSTEM are nulled so a developer's global git
+// ~/.mad-trellis. GIT_CONFIG_GLOBAL/SYSTEM are nulled so a developer's global git
 // config can never perturb a probe (mirrors integrator isolateGitGlobal).
 func (s *Scratch) env() []string {
 	e := append(os.Environ(),
@@ -269,7 +269,7 @@ func (s *Scratch) initGovernedRepo() error {
 	}
 	steps := [][]string{
 		{"init", "-q", "-b", "main", s.RepoDir},
-		{"-C", s.RepoDir, "config", "user.email", "harness@mad-substrate"},
+		{"-C", s.RepoDir, "config", "user.email", "harness@mad-trellis"},
 		{"-C", s.RepoDir, "config", "user.name", "harness"},
 	}
 	for _, st := range steps {
@@ -374,7 +374,7 @@ func (r CLIResult) OK() bool { return r.ExitCode == 0 && r.Err == nil }
 // stderr) — convenient for substring assertions.
 func (r CLIResult) Out() string { return r.Stdout + r.Stderr }
 
-// CLI runs `mad-substrate <args...> --socket <scratch>` with the hermetic env and
+// CLI runs `mad-trellis <args...> --socket <scratch>` with the hermetic env and
 // captures stdout/stderr/exit. --socket is appended automatically (probe-writers
 // pass only the subcommand + its args). A non-zero exit is NOT an error — it is a
 // first-class observable (process exit codes are part of the public surface).
@@ -629,7 +629,7 @@ func (s *Scratch) NewAgent(name string) (*Agent, error) {
 	a := &Agent{s: s, Dir: dir, Name: name}
 	steps := [][]string{
 		{"init", "-q", "-b", "main", dir},
-		{"-C", dir, "config", "user.email", name + "@mad-substrate"},
+		{"-C", dir, "config", "user.email", name + "@mad-trellis"},
 		{"-C", dir, "config", "user.name", name},
 		{"-C", dir, "remote", "add", "origin", s.BareDir},
 	}
@@ -812,11 +812,11 @@ func parseSubmitID(stdout string) string {
 }
 
 // ----------------------------------------------------------------------------
-// SpawnInfo — parse `mad-substrate spawn` stdout into the boundary fields a forkable-
+// SpawnInfo — parse `mad-trellis spawn` stdout into the boundary fields a forkable-
 // isolation probe asserts over (cwd, branch, ports, session).
 // ----------------------------------------------------------------------------
 
-// SpawnInfo is the parsed output of `mad-substrate spawn`.
+// SpawnInfo is the parsed output of `mad-trellis spawn`.
 type SpawnInfo struct {
 	Session string
 	Cwd     string

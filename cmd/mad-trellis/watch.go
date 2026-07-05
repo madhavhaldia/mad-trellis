@@ -7,8 +7,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 
-	"github.com/madhavhaldia/mad-substrate/internal/runtimecfg"
-	"github.com/madhavhaldia/mad-substrate/internal/watch"
+	"github.com/madhavhaldia/mad-trellis/internal/runtimecfg"
+	"github.com/madhavhaldia/mad-trellis/internal/watch"
 )
 
 // watchCmd is the CLI surface for project 9a (watch-view-surface): the
@@ -36,7 +36,7 @@ func watchCmd() *cobra.Command {
 			if err != nil {
 				// Non-load-bearing: a dead socket is informational, not a fault.
 				fmt.Fprintf(cmd.OutOrStdout(),
-					"cannot reach daemon at %s — start `mad-substrate daemon`.\n(the watch view is read-only and non-load-bearing; nothing is wrong with governance)\n",
+					"cannot reach daemon at %s — start `mad-trellis daemon`.\n(the watch view is read-only and non-load-bearing; nothing is wrong with governance)\n",
 					s)
 				return nil
 			}

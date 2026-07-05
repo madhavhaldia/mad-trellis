@@ -65,7 +65,7 @@ func baseSnapshot() Snapshot {
 		Leases: LeasePanel{
 			Available: true,
 			Holders: []LeaseHolder{
-				{Key: "mad-substrate:integrator:v1", Holder: "s-3-feedface0000", ExpiresAtMs: nowMs + 25_000, Fence: 1},
+				{Key: "mad-trellis:integrator:v1", Holder: "s-3-feedface0000", ExpiresAtMs: nowMs + 25_000, Fence: 1},
 			},
 		},
 		Integrations: IntegrationPanel{
@@ -110,7 +110,7 @@ func TestViewRendersCoordinationFeedSnapshot(t *testing.T) {
 	out := m.View()
 
 	wants := []string{
-		"mad-substrate watch — read-only · watcher session s-9-deadbe",
+		"mad-trellis watch — read-only · watcher session s-9-deadbe",
 		"trunk abcdef123456",
 		"1 requested / 1 claimed",
 		"integrator: present (s-3-feedfa)",
@@ -272,7 +272,7 @@ func TestHeightBudgetWithLongAuditTail(t *testing.T) {
 	if got := lineCount(out); got > 20 {
 		t.Fatalf("View() rendered %d lines, want <=20\n---\n%s", got, out)
 	}
-	for _, want := range []string{"mad-substrate watch", "Review queue", "… +", "Coordination feed", "read-only · q quit"} {
+	for _, want := range []string{"mad-trellis watch", "Review queue", "… +", "Coordination feed", "read-only · q quit"} {
 		if !strings.Contains(out, want) {
 			t.Fatalf("height-budgeted view missing %q\n---\n%s", want, out)
 		}

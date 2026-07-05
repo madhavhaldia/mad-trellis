@@ -12,7 +12,7 @@ import (
 // governed state is UNCHANGED after driving the read-only watch surface, and the
 // surface reaches NO mutating method.
 //
-// BLACK BOX over the public surface only. The watch view (`mad-substrate watch`)
+// BLACK BOX over the public surface only. The watch view (`mad-trellis watch`)
 // reaches the daemon through EXACTLY this read set: diag.health, session.whoami,
 // audit.tail, lease.list, integrate.list, integrate.trunk, integration.list. The
 // probe:

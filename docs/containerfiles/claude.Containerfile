@@ -1,6 +1,6 @@
-# Reference image for the mad-substrate container grain — Anthropic Claude Code.
+# Reference image for the mad-trellis container grain — Anthropic Claude Code.
 #
-# mad-substrate ships NO image (see docs/0006-container-grain-image-contract.md). This is
+# mad-trellis ships NO image (see docs/0006-container-grain-image-contract.md). This is
 # a recipe you build LOCALLY. The critical difference from the codex image: Claude Code
 # REFUSES `--dangerously-skip-permissions` when running as root (uid 0), and that flag
 # is what a governed unattended session relies on. So this image runs as a NON-ROOT
@@ -17,7 +17,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # The agent binary on PATH. `npm i -g` picks up the latest claude-code release at build
-# time — re-run the build to upgrade (the agent cadence is decoupled from mad-substrate).
+# time — re-run the build to upgrade (the agent cadence is decoupled from mad-trellis).
 RUN npm install -g @anthropic-ai/claude-code
 
 # Use the NON-ROOT `node` user (uid 1000) that ships in node:20, so claude's

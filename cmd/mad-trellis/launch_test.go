@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
 
-	"github.com/madhavhaldia/mad-substrate/internal/launcher"
+	"github.com/madhavhaldia/mad-trellis/internal/launcher"
 )
 
 // TestIntegratorPromptDisabled pins the opt-out predicate: off/0/false/no
@@ -56,9 +56,9 @@ func flagNames(cmd *cobra.Command) []string {
 	return names
 }
 
-// The actual `mad-substrate launch` surface must expose NO goal/dispatch affordance
+// The actual `mad-trellis launch` surface must expose NO goal/dispatch affordance
 // (Inv 13 no-goals/no-dispatch). The agent's own args after `--` are opaque
-// pass-through and are NOT part of mad-substrate's surface.
+// pass-through and are NOT part of mad-trellis's surface.
 func TestLaunchCommandHasNoGoalAffordance(t *testing.T) {
 	off := launcher.AuditNoGoals(flagNames(launchCmd()))
 	if len(off) != 0 {

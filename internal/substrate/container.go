@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/madhavhaldia/mad-substrate/internal/worktree"
+	"github.com/madhavhaldia/mad-trellis/internal/worktree"
 )
 
 // containerGrain is the T3 grain: it upgrades isolation from the v1 WORKTREE
@@ -88,14 +88,14 @@ import (
 // host→container unix-socket forward (only --ssh), and bind-mounting the daemon
 // socket gives "connection refused" across the VM boundary — so the launcher tunnels
 // the daemon socket over the STDIO of a SECOND `container exec` of a static linux
-// relay (cmd/mad-substrate-relay + internal/launcher/coop.go + internal/coop/frame.go).
+// relay (cmd/mad-trellis-relay + internal/launcher/coop.go + internal/coop/frame.go).
 // Each forwarded connection rebinds to the session via the in-container adapter's own
 // token-authed session.attach (Inv 4), proven end to end by
 // internal/launcher/coop_live_test.go. The relay ships EMBEDDED in the shipped binary
 // (internal/coopembed, a -tags coopembed build) and AUTO-RESOLVES, so the cooperative
 // plane is ON BY DEFAULT for the container grain; MAD_CONTAINER_RELAY overrides
 // with an explicit host relay path. The remaining work is build/wiring (staging the
-// embedded linux mad-substrate so the in-container cooperative layer is also present), not
+// embedded linux mad-trellis so the in-container cooperative layer is also present), not
 // a missing transport. The HARD FLOOR (FS confinement + the integrator gate) already
 // makes a container agent SAFE even when the plane is absent — it is a fail-soft
 // coordination nicety, never a safety boundary. See contain.go.

@@ -25,7 +25,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/protocol"
+	"github.com/madhavhaldia/mad-trellis/internal/protocol"
 )
 
 // DefaultCallTimeout bounds EVERY read call (request+response) so a wedged or

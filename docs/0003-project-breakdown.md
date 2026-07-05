@@ -1,7 +1,7 @@
 # 0003 — Project Breakdown (the "What")
 
 *Status: accepted. Companion to [GROUNDING.md](../GROUNDING.md) (the invariants), [0001](./0001-form-and-architecture.md) (form), [0002](./0002-stack.md) (stack).*
-*This doc is the WHAT: mad-substrate decomposed into projects, each with a crisp responsibility, that together sum to the whole. It is the anchor — every implementation task traces to a project here.*
+*This doc is the WHAT: mad-trellis decomposed into projects, each with a crisp responsibility, that together sum to the whole. It is the anchor — every implementation task traces to a project here.*
 
 *Produced by an 8-agent deliberation (4 diverse decompositions → 3 adversarial critiques → synthesis), then hardened by a 6-agent adversarial verification pass that found 4 high + 8 medium defects (4 false alarms filtered). All confirmed defects are resolved below. A final 3-agent confirmation pass verified every fix closed with no new seams introduced — enshrineable, zero must-fix.*
 
@@ -86,7 +86,7 @@ Every one of the 13 invariants has exactly one accountable owner per clause:
 
 ### P4 — Convergence / singular / durability (parallel after the live session)
 **6. integrator-trunk** — *Mediated Trunk & Single Integrator*
-- **What:** the convergent write path. Each worktree's remote points at a mad-substrate-mediated holding repo (no agent reaches real origin); the lone integrator validates and promotes to trunk.
+- **What:** the convergent write path. Each worktree's remote points at a mad-trellis-mediated holding repo (no agent reaches real origin); the lone integrator validates and promotes to trunk.
 - **In:** the mediated holding repo + redirected remote (origin-bypass **escape-resistance** is a named deliverable); an **idempotent transactional promote/rollback primitive** — explicit states `received/validating/promoted/aborted`, single atomic commit-or-rollback, exposing an idempotent `abort(integration-id)` the dead-holder path invokes, so a mid-integration death leaves trunk clean **by construction** (Inv 6/7 stay wholly inside this project); the explicit validation gate ("nothing merges silently"); the load-bearing **output side** of the closed loop; the Layer-2 validation-gate seam.
 - **Out:** lease storage; richer/LLM validation content (Layer-2 plug-in to the gate seam); the single-arbiter-of-the-ledger half; the read-only display.
 - **Owns:** 5-integrator, 6, 7, 12-output.
@@ -94,7 +94,7 @@ Every one of the 13 invariants has exactly one accountable owner per clause:
 
 **7. singular-gate** — *Singular-Resource Default-Deny Gate*
 - **What:** the default-deny boundary for resources with real external side effects.
-- **In:** default-deny unless granted; granted modes (mock / mad-substrate-proxy / serialized-human-supervised); producing the env-spec for granted endpoints; serializing supervised grants via the ledger; **proxy-bypass escape-resistance** as a named deliverable.
+- **In:** default-deny unless granted; granted modes (mock / mad-trellis-proxy / serialized-human-supervised); producing the env-spec for granted endpoints; serializing supervised grants via the ledger; **proxy-bypass escape-resistance** as a named deliverable.
 - **Out:** deciding what is singular (classifier); the convergent trunk path; provisioning real infra; writing the child env (launcher applies the spec).
 - **Owns:** 8.
 - **Depends-on:** manifest-classifier, lease-ledger-mutex
@@ -108,14 +108,14 @@ Every one of the 13 invariants has exactly one accountable owner per clause:
 
 ### P5 — Surfaces (neither is safety-load-bearing)
 **9a. watch-view-surface** — *Read-Only Watch View*
-- **What:** the host-agnostic Go read-only `mad-substrate watch` TUI (the "seventh terminal") restoring the combined result agents can't see live.
+- **What:** the host-agnostic Go read-only `mad-trellis watch` TUI (the "seventh terminal") restoring the combined result agents can't see live.
 - **In:** read-only Bubbletea/Lipgloss TUI of integrated trunk state, pending merges, conflicts, lease holders/waiters, and the **decision-audit** stream; the **read-only surface** of the closed loop.
 - **Out:** performing merges / advancing trunk; mutating any state; adding a step to the prompt loop; any per-host coupling (it is host-agnostic).
 - **Owns:** 13-readonly, 12-readsurface.
 - **Depends-on:** daemon-arbiter-protocol, lease-ledger-mutex, integrator-trunk
 
 **9b. host-adapter** — *Cooperative Per-Host Layer*
-- **What:** the thin per-host cooperative layer (hooks + MCP), now **native Go in the single binary** (`mad-substrate mcp` + `mad-substrate hook <event>`). **Claude Code is instance #1, not the project** — it is parameterized per host.
+- **What:** the thin per-host cooperative layer (hooks + MCP), now **native Go in the single binary** (`mad-trellis mcp` + `mad-trellis hook <event>`). **Claude Code is instance #1, not the project** — it is parameterized per host.
 - **In:** translate agent MCP-tool calls → daemon JSON-RPC for claim, request-merge, see-locks (optimization + smooth UX only); the agent-facing MCP dialect kept separate from the daemon API (10-decoupling). (Historical: an early plan also intercepted each edit with a proactive "claim-before-edit" PreToolUse hook; that per-edit hook was removed — the cooperative layer is now the MCP tools plus a SessionStart standing-guidance hook, with no per-edit interception.)
 - **Out:** owning ANY structural safety invariant (the substrate floor holds for an agent that calls nothing); coupling the agnostic core to one host's specifics; a general adapter SDK for N hosts (Layer-2).
 - **Owns:** — (cooperative; no Layer-1 invariant).
@@ -130,7 +130,7 @@ Every one of the 13 invariants has exactly one accountable owner per clause:
 - **Depends-on:** all capability projects (5, 6, 7, 8, 9a, 9b)
 
 **10b. distribution-packaging** — *Release Engineering*
-- **What:** ship mad-substrate as one artifact.
+- **What:** ship mad-trellis as one artifact.
 - **In:** single static **cgo-free** Go binary (modernc.org/sqlite); version-pinning conducted substrate tools; the cooperative layer ships *inside* this binary (native Go — no separate adapter bundle); brew later; macOS + Apple Silicon first.
 - **Out:** multi-host infra; auto-update of governed projects; a GUI installer; any safety-authority code (that is 10a — different cadence, different failure mode).
 - **Owns:** — (release engineering; no invariant).
@@ -154,7 +154,7 @@ P6  ├─ conformance-harness       (← all capability projects)   ▶ SELF-HO
     └─ distribution-packaging    (← capability projects)
 ```
 - **No cycles:** the mediated remote is injected into the launcher's env as a later segment, never a build-time ancestor; `liveness-recovery → integrator-trunk` is a one-way dependency (integrator does not depend on liveness).
-- **Two milestones, disambiguated:** *launcher operational* (P3) = a governed live session exists; *self-hosting day* (P6) = the conformance acceptance gate passes and mad-substrate can govern its own development against a proven safety property.
+- **Two milestones, disambiguated:** *launcher operational* (P3) = a governed live session exists; *self-hosting day* (P6) = the conformance acceptance gate passes and mad-trellis can govern its own development against a proven safety property.
 
 ## v1 simplifications (stated so "clean seams" aren't left implicit)
 - **Convergent lease key = the trunk** (single key); declaration→key mapping owned by manifest-classifier; finer granularity is the named Layer-2 scheduler seam.

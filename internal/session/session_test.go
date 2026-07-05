@@ -10,8 +10,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/madhavhaldia/mad-substrate/internal/daemon"
-	"github.com/madhavhaldia/mad-substrate/internal/protocol"
+	"github.com/madhavhaldia/mad-trellis/internal/daemon"
+	"github.com/madhavhaldia/mad-trellis/internal/protocol"
 )
 
 // fakeLeases is a controllable read-only lease checker keyed by raw key string.

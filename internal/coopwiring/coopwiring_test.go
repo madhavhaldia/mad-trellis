@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-const testBin = "/usr/local/bin/mad-substrate"
+const testBin = "/usr/local/bin/mad-trellis"
 
 // gitInit makes dir a git repo so the per-worktree exclude path resolves. Tests
 // that want the non-git path simply skip this.
@@ -107,9 +107,9 @@ func TestWireClaude(t *testing.T) {
 	// .mcp.json: command == binPath, args == ["mcp"].
 	mcp := readJSONFile(t, filepath.Join(wt, ".mcp.json"))
 	servers, _ := mcp["mcpServers"].(map[string]any)
-	nm, _ := servers["mad-substrate"].(map[string]any)
+	nm, _ := servers["mad-trellis"].(map[string]any)
 	if nm == nil {
-		t.Fatalf(".mcp.json missing mcpServers.mad-substrate: %#v", mcp)
+		t.Fatalf(".mcp.json missing mcpServers.mad-trellis: %#v", mcp)
 	}
 	if got := nm["command"]; got != testBin {
 		t.Errorf(".mcp.json command: want %q, got %v", testBin, got)
@@ -249,8 +249,8 @@ func TestWireCodex(t *testing.T) {
 
 	// ExtraArgs: ONLY the two -c pairs (no --dangerously-bypass-hook-trust).
 	wantArgs := []string{
-		"-c", `mcp_servers.mad-substrate.command="` + testBin + `"`,
-		"-c", `mcp_servers.mad-substrate.args=["mcp"]`,
+		"-c", `mcp_servers.mad-trellis.command="` + testBin + `"`,
+		"-c", `mcp_servers.mad-trellis.args=["mcp"]`,
 	}
 	if len(res.ExtraArgs) != len(wantArgs) {
 		t.Fatalf("ExtraArgs len: want %d, got %d (%#v)", len(wantArgs), len(res.ExtraArgs), res.ExtraArgs)
@@ -374,9 +374,9 @@ func TestWireIntegratorClaude(t *testing.T) {
 	// .mcp.json args MUST be the role'd args.
 	mcp := readJSONFile(t, filepath.Join(wt, ".mcp.json"))
 	servers, _ := mcp["mcpServers"].(map[string]any)
-	nm, _ := servers["mad-substrate"].(map[string]any)
+	nm, _ := servers["mad-trellis"].(map[string]any)
 	if nm == nil {
-		t.Fatalf(".mcp.json missing mcpServers.mad-substrate: %#v", mcp)
+		t.Fatalf(".mcp.json missing mcpServers.mad-trellis: %#v", mcp)
 	}
 	if got := nm["command"]; got != testBin {
 		t.Errorf(".mcp.json command: want %q, got %v", testBin, got)
@@ -412,7 +412,7 @@ func TestWireIntegratorClaude(t *testing.T) {
 		"mad_integration_claim",
 		"mad_integration_approve",
 		"mad_integration_reject",
-		"[mad-substrate] N integration request(s) awaiting review",
+		"[mad-trellis] N integration request(s) awaiting review",
 		"state is truth, nudges are wake-ups",
 	} {
 		if !strings.Contains(guide, want) {
@@ -441,8 +441,8 @@ func TestWireIntegratorCodex(t *testing.T) {
 		t.Fatalf("WireIntegrator codex: %v", err)
 	}
 	wantArgs := []string{
-		"-c", `mcp_servers.mad-substrate.command="` + testBin + `"`,
-		"-c", `mcp_servers.mad-substrate.args=["mcp","--role","integrator"]`,
+		"-c", `mcp_servers.mad-trellis.command="` + testBin + `"`,
+		"-c", `mcp_servers.mad-trellis.args=["mcp","--role","integrator"]`,
 	}
 	if len(res.ExtraArgs) != len(wantArgs) {
 		t.Fatalf("ExtraArgs len: want %d, got %d (%#v)", len(wantArgs), len(res.ExtraArgs), res.ExtraArgs)

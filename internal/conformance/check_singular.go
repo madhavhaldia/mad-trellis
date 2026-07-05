@@ -27,7 +27,7 @@ import (
 //	  side effect) — the gate hands a sentinel, never a live endpoint — so even the
 //	  GRANTED path never leaks a reachable real endpoint for a non-supervised mode.
 //
-// This check needs a manifest with a grant, so Run writes mad-substrate.json into the
+// This check needs a manifest with a grant, so Run writes mad-trellis.json into the
 // scratch governed repo and RESTARTS the daemon (the classifier loads the
 // manifest at boot). To keep the gate hermetic, it uses a dedicated Scratch
 // helper that re-reads the manifest.
@@ -80,7 +80,7 @@ func (c singularGated) Run(s *Scratch) Result {
 	// #4: the denied env-spec must carry the NON-routable sentinel AND leak NO routable
 	// endpoint in any value's raw OR base64/hex/url-decoded form (the prior line-78
 	// guard only caught a plaintext "://<resource>" — an encoded leak slipped past).
-	if reason := assertNonRoutableEnv(deny.Env, "mad-substrate-denied://"); reason != "" {
+	if reason := assertNonRoutableEnv(deny.Env, "mad-trellis-denied://"); reason != "" {
 		return fail(c, "BREACH (denied env-spec, NOT trusting real_reachable): %s", reason)
 	}
 
@@ -118,15 +118,15 @@ func (c singularGated) Control(s *Scratch) error {
 	// encoded leak, the Run's "denied env carries only a non-routable sentinel" verdict
 	// would be vacuous. (No production gate.go change — the detector is fed directly.)
 	leaked := map[string]string{
-		"MAD_SINGULAR_PROD_DATABASE": "mad-substrate-denied://prod-database", // the honest sentinel
+		"MAD_SINGULAR_PROD_DATABASE": "mad-trellis-denied://prod-database", // the honest sentinel
 		"MAD_SMUGGLED":               hexEndpoint("postgres://prod.internal.example:5432/db"),
 	}
-	if reason := assertNonRoutableEnv(leaked, "mad-substrate-denied://"); reason == "" {
+	if reason := assertNonRoutableEnv(leaked, "mad-trellis-denied://"); reason == "" {
 		return fmt.Errorf("CONTROL VACUOUS: the deny-env leak scan PASSED a synthetic env smuggling a hex-encoded routable endpoint — it cannot catch an encoded leak, so the deny verdict proves nothing")
 	}
 	// And a clean sentinel-only denied env must NOT be flagged (not flagging all).
-	clean := map[string]string{"MAD_SINGULAR_PROD_DATABASE": "mad-substrate-denied://prod-database"}
-	if reason := assertNonRoutableEnv(clean, "mad-substrate-denied://"); reason != "" {
+	clean := map[string]string{"MAD_SINGULAR_PROD_DATABASE": "mad-trellis-denied://prod-database"}
+	if reason := assertNonRoutableEnv(clean, "mad-trellis-denied://"); reason != "" {
 		return fmt.Errorf("CONTROL VACUOUS: the deny-env leak scan FLAGGED a clean sentinel-only env (%s) — it flags everything", reason)
 	}
 
@@ -169,12 +169,12 @@ func singularManifest() string {
 `
 }
 
-// writeManifestAndRestart writes mad-substrate.json into the scratch governed repo and
+// writeManifestAndRestart writes mad-trellis.json into the scratch governed repo and
 // restarts the daemon so the classifier reloads the manifest at boot. It is a
 // Scratch method declared here (next to its only consumer) to keep harness.go
 // focused on lifecycle primitives.
 func (s *Scratch) writeManifestAndRestart(manifest string) error {
-	if err := os.WriteFile(filepath.Join(s.RepoDir, "mad-substrate.json"), []byte(manifest), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(s.RepoDir, "mad-trellis.json"), []byte(manifest), 0o644); err != nil {
 		return err
 	}
 	// Stop the running daemon, then start a fresh one that reads the new manifest.

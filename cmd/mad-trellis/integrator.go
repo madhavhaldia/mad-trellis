@@ -16,10 +16,10 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/madhavhaldia/mad-substrate/internal/coopwiring"
-	"github.com/madhavhaldia/mad-substrate/internal/launcher"
-	"github.com/madhavhaldia/mad-substrate/internal/rpcclient"
-	"github.com/madhavhaldia/mad-substrate/internal/runtimecfg"
+	"github.com/madhavhaldia/mad-trellis/internal/coopwiring"
+	"github.com/madhavhaldia/mad-trellis/internal/launcher"
+	"github.com/madhavhaldia/mad-trellis/internal/rpcclient"
+	"github.com/madhavhaldia/mad-trellis/internal/runtimecfg"
 )
 
 // integratorPresenceTTLHint mirrors the MCP server's integratorPresenceTTL (60s)
@@ -28,13 +28,13 @@ import (
 const integratorPresenceTTLHint = 60
 
 // integratorLeaseKey is the FROZEN presence-lease key bytes for the singleton
-// integrator. The integrator's MCP server (`mad-substrate mcp --role integrator`,
+// integrator. The integrator's MCP server (`mad-trellis mcp --role integrator`,
 // a sibling unit) ACQUIRES and holds this lease; this command only INSPECTs it
 // to enforce "one integrator per trunk". The lease.inspect param encodes the key
 // as standard base64 of these raw bytes, mirroring internal/launcher/enforce.go.
-const integratorLeaseKey = "mad-substrate:integrator:v1"
+const integratorLeaseKey = "mad-trellis:integrator:v1"
 
-const defaultIntegratorPrompt = "You are the mad-substrate integrator for this trunk. Read .mad-substrate/integrator.md and run the review loop."
+const defaultIntegratorPrompt = "You are the mad-trellis integrator for this trunk. Read .mad-trellis/integrator.md and run the review loop."
 
 func integratorCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -42,7 +42,7 @@ func integratorCmd() *cobra.Command {
 		Short: "Launch and inspect the external integrator agent (one per trunk)",
 		Long: "The integrator is a normal coding agent (claude/codex) that runs DIRECTLY in the current " +
 			"trunk/feature worktree — not an isolated boundary — wired with the integrator MCP toolset " +
-			"(`mad-substrate mcp --role integrator`). It reviews builder branches and merges them through the " +
+			"(`mad-trellis mcp --role integrator`). It reviews builder branches and merges them through the " +
 			"gated trunk lease. Exactly one integrator runs per trunk, enforced by a singleton presence lease.",
 	}
 	cmd.AddCommand(integratorStartCmd(), integratorRunCmd(), integratorStatusCmd(), integratorStopCmd())
@@ -79,7 +79,7 @@ func integratorRunCmd() *cobra.Command {
 			host := hostForAgent(agent)
 			bin, err := coopwiring.BinaryPath()
 			if err != nil {
-				return fmt.Errorf("resolve mad-substrate binary: %w", err)
+				return fmt.Errorf("resolve mad-trellis binary: %w", err)
 			}
 			res, werr := coopwiring.WireIntegrator(host, dir, bin)
 			if werr != nil {
@@ -121,7 +121,7 @@ func integratorStartCmd() *cobra.Command {
 		Use:   "start [-- <agent> args...]",
 		Short: "Wire a coding agent as the integrator and open it in a separate terminal",
 		Long: "start wires the chosen agent (default: claude; also codex) with the integrator MCP toolset " +
-			"(`mad-substrate mcp --role integrator`) into the CURRENT worktree (the trunk/feature checkout), then " +
+			"(`mad-trellis mcp --role integrator`) into the CURRENT worktree (the trunk/feature checkout), then " +
 			"opens it in a new visible terminal with that worktree as cwd. It first inspects the singleton " +
 			"integrator presence lease and refuses to start a second one. The daemon launches nothing — this " +
 			"is the user-invoked CLI doing it.\n\n" +
@@ -165,7 +165,7 @@ func integratorStartCmd() *cobra.Command {
 
 			// 3) Wire the CURRENT worktree (trunk/feature checkout), not a boundary,
 			// and open/print it. This is the SAME reusable path the launch-time
-			// integrator prompt takes (cmd/mad-substrate/launch.go) — single source of
+			// integrator prompt takes (cmd/mad-trellis/launch.go) — single source of
 			// truth for wiring + terminal-open.
 			dir, err := os.Getwd()
 			if err != nil {
@@ -232,7 +232,7 @@ func integratorPoolSize() int {
 }
 
 // inspectIntegratorPool inspects each of the n pool slot leases
-// (mad-substrate:integrator:v1:slot-0 .. slot-(n-1)) and counts how many are held.
+// (mad-trellis:integrator:v1:slot-0 .. slot-(n-1)) and counts how many are held.
 // It returns (running, reachable); reachable is false (fail-soft) when the daemon
 // is unreachable or any inspect call fails — callers then report not-reachable.
 func inspectIntegratorPool(socket string, n int) (running int, reachable bool) {
@@ -469,7 +469,7 @@ func inspectKey(socket, keyB64 string) (held bool, holder string, reachable bool
 // singleton presence lease. Because a lease is released ONLY by its own holder or
 // by liveness reclaim of a dead one (Inv 4 — one session never releases another's
 // lease), stop works by SIGNALLING the integrator's own MCP process: it reads the
-// pidfile that process wrote, verifies the pid is really an mad-substrate integrator
+// pidfile that process wrote, verifies the pid is really an mad-trellis integrator
 // (so a reused pid is never signalled), and sends the SIGTERM the server handles
 // by releasing its lease. If the process is already gone, a reclaim pass frees an
 // already-expired lease; one whose TTL has not yet lapsed clears on its own.
@@ -481,7 +481,7 @@ func integratorStopCmd() *cobra.Command {
 		Short: "Stop the running integrator and free its presence lease",
 		Long: "stop signals the running integrator's MCP server to shut down cleanly, releasing the " +
 			"singleton presence lease so a new integrator can start. It finds the process via the pidfile the " +
-			"integrator wrote beside the ledger, verifies the pid is really an mad-substrate integrator (a reused " +
+			"integrator wrote beside the ledger, verifies the pid is really an mad-trellis integrator (a reused " +
 			"pid is never signalled), and sends SIGTERM — which the integrator handles by releasing its lease. " +
 			"If the process is already gone, stop runs a reclaim pass; a lease whose TTL has not yet lapsed " +
 			"clears within ~60s. --force escalates to SIGKILL if a clean stop does not release the lease.",
@@ -553,7 +553,7 @@ func stopOneIntegrator(out io.Writer, socket string, rawKey []byte, holder strin
 	}
 
 	// Pid-reuse guard: never signal a pid the OS has recycled for an unrelated
-	// process. If it does not look like an mad-substrate integrator, leave it alone
+	// process. If it does not look like an mad-trellis integrator, leave it alone
 	// and let the stale lease lapse at its TTL.
 	if !pidLooksLikeIntegrator(pid) {
 		_ = os.Remove(pidfile)
@@ -608,10 +608,10 @@ func pidAlive(pid int) bool {
 }
 
 // pidLooksLikeIntegrator best-effort verifies (via `ps`) that pid's command is an
-// mad-substrate integrator MCP server — the pid-reuse guard so stop never signals a
+// mad-trellis integrator MCP server — the pid-reuse guard so stop never signals a
 // recycled pid belonging to an unrelated process. It matches "integrator" (from
 // the server's `mcp --role integrator` argv), which is specific to this process
-// type; a bare "mad-substrate" match would be too broad (it also hits the CLI
+// type; a bare "mad-trellis" match would be too broad (it also hits the CLI
 // itself, test binaries, and editors that merely have the repo path open).
 func pidLooksLikeIntegrator(pid int) bool {
 	out, err := exec.Command("ps", "-p", strconv.Itoa(pid), "-o", "command=").Output()
@@ -637,7 +637,7 @@ func waitReleased(socket, keyB64 string, timeout time.Duration) bool {
 }
 
 // reclaimPass triggers one liveness-recovery pass (the same frozen liveness.scan
-// `mad-substrate recover` uses) so an already-expired presence lease is freed
+// `mad-trellis recover` uses) so an already-expired presence lease is freed
 // immediately rather than at the next daemon sweep. Best-effort.
 func reclaimPass(socket string) {
 	cl, err := rpcclient.Dial(socket)
@@ -677,7 +677,7 @@ func startIntegrator(socket, dir, agent string, passArgs []string, printOnly boo
 	_ = socket
 	bin, err := coopwiring.BinaryPath()
 	if err != nil {
-		return false, fmt.Errorf("resolve mad-substrate binary: %w", err)
+		return false, fmt.Errorf("resolve mad-trellis binary: %w", err)
 	}
 
 	// Open a terminal on the wrapper. `integrator run` performs the current-worktree

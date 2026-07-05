@@ -20,13 +20,13 @@ func writeExec(t *testing.T, dir, name string) string {
 
 func TestAgentFromArgv0(t *testing.T) {
 	cases := map[string]string{
-		"claude":                 "claude",
-		"/usr/local/bin/codex":   "codex",
-		"./claude":               "claude",
-		"mad-substrate":          "", // normal invocation
-		"/opt/bin/mad-substrate": "", // normal invocation by path
-		"git":                    "", // unsupported tool
-		"":                       "", // degenerate
+		"claude":               "claude",
+		"/usr/local/bin/codex": "codex",
+		"./claude":             "claude",
+		"mad-trellis":          "", // normal invocation
+		"/opt/bin/mad-trellis": "", // normal invocation by path
+		"git":                  "", // unsupported tool
+		"":                     "", // degenerate
 	}
 	for argv0, want := range cases {
 		if got := AgentFromArgv0(argv0); got != want {
@@ -36,11 +36,11 @@ func TestAgentFromArgv0(t *testing.T) {
 }
 
 // ResolveReal must find the REAL agent and never resolve back into the shim dir
-// (which would re-exec mad-substrate forever). The "self" binary stands in for the
-// running mad-substrate; the shim is a symlink to it.
+// (which would re-exec mad-trellis forever). The "self" binary stands in for the
+// running mad-trellis; the shim is a symlink to it.
 func TestResolveRealExcludesShimDir(t *testing.T) {
 	root := t.TempDir()
-	self := writeExec(t, root, "mad-substrate") // the running binary
+	self := writeExec(t, root, "mad-trellis") // the running binary
 	shimDir := filepath.Join(root, "shims")
 	realDir := filepath.Join(root, "realbin")
 	if err := os.MkdirAll(shimDir, 0o755); err != nil {
@@ -49,7 +49,7 @@ func TestResolveRealExcludesShimDir(t *testing.T) {
 	if err := os.MkdirAll(realDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	// shim: claude → mad-substrate; real: a genuine claude.
+	// shim: claude → mad-trellis; real: a genuine claude.
 	if err := os.Symlink(self, filepath.Join(shimDir, "claude")); err != nil {
 		t.Fatal(err)
 	}
@@ -66,11 +66,11 @@ func TestResolveRealExcludesShimDir(t *testing.T) {
 	}
 }
 
-// FAIL-CLOSED: if the only reachable claude resolves back to the mad-substrate shim,
+// FAIL-CLOSED: if the only reachable claude resolves back to the mad-trellis shim,
 // ResolveReal must refuse rather than loop or fall through to an ungoverned exec.
 func TestResolveRealTamperedOnlyShimFailsClosed(t *testing.T) {
 	root := t.TempDir()
-	self := writeExec(t, root, "mad-substrate")
+	self := writeExec(t, root, "mad-trellis")
 	shimDir := filepath.Join(root, "shims")
 	if err := os.MkdirAll(shimDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -79,7 +79,7 @@ func TestResolveRealTamperedOnlyShimFailsClosed(t *testing.T) {
 		t.Fatal(err)
 	}
 	// A second PATH entry that ALSO only contains a symlink-to-self (a stray shim
-	// not equal to shimDir): the resolver must detect it points at mad-substrate and
+	// not equal to shimDir): the resolver must detect it points at mad-trellis and
 	// refuse, never exec it.
 	strayDir := filepath.Join(root, "stray")
 	if err := os.MkdirAll(strayDir, 0o755); err != nil {
@@ -96,15 +96,15 @@ func TestResolveRealTamperedOnlyShimFailsClosed(t *testing.T) {
 	}
 }
 
-// FAIL-CLOSED on an unknown self (the cardinal rule): if the running mad-substrate
+// FAIL-CLOSED on an unknown self (the cardinal rule): if the running mad-trellis
 // binary cannot be identified (os.Executable() failed → selfBin==""), ResolveReal
 // must NOT silently disable its shim-loop detector and return a shim — that would
-// re-exec mad-substrate forever. It must refuse. This pins the os.Executable()-error
+// re-exec mad-trellis forever. It must refuse. This pins the os.Executable()-error
 // branch that resolveAgentBinary now turns into a BLOCK.
 func TestResolveRealEmptySelfFailsClosed(t *testing.T) {
 	root := t.TempDir()
-	self := writeExec(t, root, "mad-substrate")
-	// A PATH whose only `claude` is a symlink → mad-substrate (a shim). With a known
+	self := writeExec(t, root, "mad-trellis")
+	// A PATH whose only `claude` is a symlink → mad-trellis (a shim). With a known
 	// self this fails closed (ErrShimTampered); with an EMPTY self the loop guard
 	// must STILL refuse rather than return the shim.
 	strayDir := filepath.Join(root, "stray")
@@ -125,7 +125,7 @@ func TestResolveRealEmptySelfFailsClosed(t *testing.T) {
 
 func TestResolveRealNotFoundFailsClosed(t *testing.T) {
 	root := t.TempDir()
-	self := writeExec(t, root, "mad-substrate")
+	self := writeExec(t, root, "mad-trellis")
 	empty := filepath.Join(root, "empty")
 	if err := os.MkdirAll(empty, 0o755); err != nil {
 		t.Fatal(err)
@@ -138,7 +138,7 @@ func TestResolveRealNotFoundFailsClosed(t *testing.T) {
 
 func TestResolveRealSkipsNonExecutable(t *testing.T) {
 	root := t.TempDir()
-	self := writeExec(t, root, "mad-substrate")
+	self := writeExec(t, root, "mad-trellis")
 	d1 := filepath.Join(root, "d1")
 	d2 := filepath.Join(root, "d2")
 	for _, d := range []string{d1, d2} {
@@ -160,7 +160,7 @@ func TestResolveRealSkipsNonExecutable(t *testing.T) {
 
 func TestInstallShimsWritesOnlyShims(t *testing.T) {
 	root := t.TempDir()
-	self := writeExec(t, root, "mad-substrate")
+	self := writeExec(t, root, "mad-trellis")
 	shimDir := filepath.Join(root, "shims")
 
 	installed, err := InstallShims(self, shimDir, []string{"claude", "codex"})
@@ -181,7 +181,7 @@ func TestInstallShimsWritesOnlyShims(t *testing.T) {
 		}
 		selfReal, _ := filepath.EvalSymlinks(self)
 		if resolved != selfReal {
-			t.Errorf("shim %s resolves to %q, want the mad-substrate binary %q", a, resolved, selfReal)
+			t.Errorf("shim %s resolves to %q, want the mad-trellis binary %q", a, resolved, selfReal)
 		}
 	}
 
@@ -196,7 +196,7 @@ func TestInstallShimsWritesOnlyShims(t *testing.T) {
 // differs from ResolveReal's pick proves the exclusion guard is load-bearing.
 func TestResolveRealControlNaiveWouldPickTheShim(t *testing.T) {
 	root := t.TempDir()
-	self := writeExec(t, root, "mad-substrate")
+	self := writeExec(t, root, "mad-trellis")
 	shimDir := filepath.Join(root, "shims")
 	realDir := filepath.Join(root, "realbin")
 	for _, d := range []string{shimDir, realDir} {

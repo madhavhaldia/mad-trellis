@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/protocol"
+	"github.com/madhavhaldia/mad-trellis/internal/protocol"
 )
 
 // DefaultDialTimeout bounds the initial connect and every lazy re-dial.

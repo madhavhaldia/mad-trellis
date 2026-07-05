@@ -40,7 +40,7 @@ func TestRunClaudeSessionStart(t *testing.T) {
 	if ac != sessionStartGuidance {
 		t.Fatalf("additionalContext must be the standing guidance, got %q", ac)
 	}
-	if !strings.Contains(ac, "mad-substrate MCP tools") {
+	if !strings.Contains(ac, "mad-trellis MCP tools") {
 		t.Fatalf("guidance should reference the MCP tools: %q", ac)
 	}
 }

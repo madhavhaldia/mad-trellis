@@ -1,4 +1,4 @@
-# mad-substrate — Grounding Invariants
+# mad-trellis — Grounding Invariants
 
 *The constitution. When an implementation decision is unclear, the answer is here.*
 *If a feature can't be reconciled with these, the feature loses — not the invariant.*
@@ -85,11 +85,11 @@ The entire engineering problem is **classification + routing**. The lock is a `S
     copy-pasting across an app boundary, it's a design failure, not a feature.
 
 ### Experience
-13. **Governance is ambient; interaction is unchanged.** Using mad-substrate is identical to using a
+13. **Governance is ambient; interaction is unchanged.** Using mad-trellis is identical to using a
     bare interactive agent session — open a terminal, run your agent, prompt it live, turn by turn.
-    mad-substrate takes **no goals and dispatches no tasks**; the user drives each session. Any design
-    that makes the user *operate* mad-substrate instead of *just using their agent* is wrong. The only
-    new surface mad-substrate may add is a **read-only view of the integrated result**; it never adds
+    mad-trellis takes **no goals and dispatches no tasks**; the user drives each session. Any design
+    that makes the user *operate* mad-trellis instead of *just using their agent* is wrong. The only
+    new surface mad-trellis may add is a **read-only view of the integrated result**; it never adds
     steps to the prompt loop. Substrate-authored coordination NUDGES — fixed-template, daemon-authored
     signals about governed state (a pending review, a verdict), delivered by the launcher/MCP layer
     and disableable via `MAD_NUDGES=off` — are ambient governance, not goal dispatch; they may never

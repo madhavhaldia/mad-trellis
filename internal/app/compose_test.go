@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/manifest"
-	"github.com/madhavhaldia/mad-substrate/internal/protocol"
+	"github.com/madhavhaldia/mad-trellis/internal/manifest"
+	"github.com/madhavhaldia/mad-trellis/internal/protocol"
 )
 
 func TestFrozenSurfaceRoundTrip(t *testing.T) {

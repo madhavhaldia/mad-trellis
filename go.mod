@@ -1,4 +1,4 @@
-module github.com/madhavhaldia/mad-substrate
+module github.com/madhavhaldia/mad-trellis
 
 go 1.26.4
 

@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/protocol"
+	"github.com/madhavhaldia/mad-trellis/internal/protocol"
 )
 
 // startCappedDaemon starts a real daemon whose connection semaphore is sized to

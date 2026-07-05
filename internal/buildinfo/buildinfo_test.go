@@ -54,7 +54,7 @@ func TestLoadManifest(t *testing.T) {
 
 func TestRenderNonVerbose(t *testing.T) {
 	got := Render("1.2.3", "abc1234", 7, false)
-	want := "mad-substrate 1.2.3 (commit abc1234, contract v7)\n"
+	want := "mad-trellis 1.2.3 (commit abc1234, contract v7)\n"
 	if got != want {
 		t.Errorf("non-verbose Render = %q, want %q", got, want)
 	}
@@ -63,7 +63,7 @@ func TestRenderNonVerbose(t *testing.T) {
 func TestRenderVerbose(t *testing.T) {
 	got := Render("1.2.3", "abc1234", 7, true)
 	// Verbose must still START with the exact canonical line.
-	first := "mad-substrate 1.2.3 (commit abc1234, contract v7)\n"
+	first := "mad-trellis 1.2.3 (commit abc1234, contract v7)\n"
 	if !strings.HasPrefix(got, first) {
 		t.Errorf("verbose Render must start with canonical line; got:\n%s", got)
 	}

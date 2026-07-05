@@ -19,8 +19,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/lease"
-	"github.com/madhavhaldia/mad-substrate/internal/manifest"
+	"github.com/madhavhaldia/mad-trellis/internal/lease"
+	"github.com/madhavhaldia/mad-trellis/internal/manifest"
 )
 
 // --- helpers -----------------------------------------------------------------
@@ -105,7 +105,7 @@ func TestDefaultDenyGroundState(t *testing.T) {
 		t.Fatalf("an ungranted singular resource must be DENIED; got %+v", a)
 	}
 	for _, v := range a.Env {
-		if !strings.HasPrefix(v, "mad-substrate-denied://") {
+		if !strings.HasPrefix(v, "mad-trellis-denied://") {
 			t.Fatalf("denied env must route to a non-routable deny sentinel; got %q", v)
 		}
 	}
@@ -337,7 +337,7 @@ func TestEmptyEndpointSupervisedDenies(t *testing.T) {
 	if a.Granted || a.RealReachable {
 		t.Fatalf("an endpoint-less supervised grant must be denied; got %+v", a)
 	}
-	if v := a.Env[envName("db")]; !strings.HasPrefix(v, "mad-substrate-denied://") {
+	if v := a.Env[envName("db")]; !strings.HasPrefix(v, "mad-trellis-denied://") {
 		t.Fatalf("the denied env must be a non-routable sentinel, not a bare value; got %q", v)
 	}
 	// The malformed grant must NOT have taken the exclusive lease.

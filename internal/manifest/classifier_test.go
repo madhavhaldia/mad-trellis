@@ -284,6 +284,31 @@ func TestLoadDefaultsAndTolerance(t *testing.T) {
 	}
 }
 
+func TestLoadUsesOnlyMadTrellisManifest(t *testing.T) {
+	dir := t.TempDir()
+	legacyManifest := "mad-" + "substrate.json"
+	mustWrite(t, filepath.Join(dir, legacyManifest),
+		`{"version":1,"convergent":{"paths":["legacy.lock"]}}`)
+
+	m, err := Load(dir)
+	if err != nil {
+		t.Fatalf("legacy manifest must be ignored without error: %v", err)
+	}
+	if New(m).Classify(PathRef("legacy.lock")) != Forkable {
+		t.Fatal("legacy manifest must not be read")
+	}
+
+	mustWrite(t, filepath.Join(dir, ManifestFile),
+		`{"version":1,"convergent":{"paths":["tokens.lock"]}}`)
+	m, err = Load(dir)
+	if err != nil {
+		t.Fatalf("load new manifest: %v", err)
+	}
+	if New(m).Classify(PathRef("tokens.lock")) != Convergent {
+		t.Fatal("mad-trellis.json must be the manifest file")
+	}
+}
+
 // --- glob matcher -----------------------------------------------------------
 
 func TestGlobMatcher(t *testing.T) {

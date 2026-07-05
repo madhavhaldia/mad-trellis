@@ -18,7 +18,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/madhavhaldia/mad-substrate/internal/repoid"
+	"github.com/madhavhaldia/mad-trellis/internal/repoid"
 )
 
 // Worktree is a created per-agent worktree.
@@ -111,8 +111,8 @@ func CreateClone(repo, name string) (*Worktree, error) {
 	}
 	// A default identity so commits succeed without per-image git config; the agent
 	// is free to override it.
-	_, _ = git(path, "config", "user.email", "mad-substrate-agent@local")
-	_, _ = git(path, "config", "user.name", "mad-substrate agent")
+	_, _ = git(path, "config", "user.email", "mad-trellis-agent@local")
+	_, _ = git(path, "config", "user.name", "mad-trellis agent")
 	return &Worktree{Name: name, Branch: branch, Path: path}, nil
 }
 
@@ -142,7 +142,7 @@ func worktreeBase(repoAbs string) string {
 		if err != nil {
 			home = os.TempDir()
 		}
-		root = filepath.Join(home, ".mad-substrate", "worktrees")
+		root = filepath.Join(home, ".mad-trellis", "worktrees")
 	}
 	h := sha256.Sum256([]byte(repoid.Canonical(repoAbs)))
 	return filepath.Join(root, hex.EncodeToString(h[:8]))

@@ -15,7 +15,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/madhavhaldia/mad-substrate/internal/manifest"
+	"github.com/madhavhaldia/mad-trellis/internal/manifest"
 )
 
 // --- Inv-10-grainswap atomicity: same-session concurrent Provision -----------

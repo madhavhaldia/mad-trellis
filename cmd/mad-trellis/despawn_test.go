@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/madhavhaldia/mad-substrate/internal/worktree"
+	"github.com/madhavhaldia/mad-trellis/internal/worktree"
 )
 
 func mustEval(t *testing.T, p string) string {

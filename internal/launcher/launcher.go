@@ -12,20 +12,20 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/madhavhaldia/mad-substrate/internal/conductor"
-	"github.com/madhavhaldia/mad-substrate/internal/coopwiring"
-	"github.com/madhavhaldia/mad-substrate/internal/manifest"
-	"github.com/madhavhaldia/mad-substrate/internal/rpcclient"
-	"github.com/madhavhaldia/mad-substrate/internal/runtimecfg"
-	"github.com/madhavhaldia/mad-substrate/internal/substrate"
+	"github.com/madhavhaldia/mad-trellis/internal/conductor"
+	"github.com/madhavhaldia/mad-trellis/internal/coopwiring"
+	"github.com/madhavhaldia/mad-trellis/internal/manifest"
+	"github.com/madhavhaldia/mad-trellis/internal/rpcclient"
+	"github.com/madhavhaldia/mad-trellis/internal/runtimecfg"
+	"github.com/madhavhaldia/mad-trellis/internal/substrate"
 )
 
 // coopSocketPath is where the in-container relay listens and where the cooperative
-// layer (mad-substrate mcp / hook) connects (its MAD_SOCKET). It lives on the
+// layer (mad-trellis mcp / hook) connects (its MAD_SOCKET). It lives on the
 // container's writable tmpfs /tmp — NOT under /work, so it never appears in the
 // agent's git clone — and is short enough to satisfy the unix-socket path-length
 // limit.
-const coopSocketPath = "/tmp/mad-substrate-coop.sock"
+const coopSocketPath = "/tmp/mad-trellis-coop.sock"
 
 // coopRelayEnv is the OVERRIDE knob: when set to a host path of the static linux
 // relay binary it WINS over the embedded relay (resolveRelayHostPath precedence #1).
@@ -83,7 +83,7 @@ type Config struct {
 	Resources []substrate.ResourceReq // declared resources for the substrate to classify+route
 
 	// ResolveAgent resolves the raw Agent to a real executable on the HOST,
-	// fail-closed and with the mad-substrate shim EXCLUDED (so a bare name can never
+	// fail-closed and with the mad-trellis shim EXCLUDED (so a bare name can never
 	// resolve back to our own shim). Run calls it ONLY for the host/worktree grain;
 	// at the container grain the Agent is passed THROUGH (resolved in-container by
 	// `container exec`). nil → identity (used by tests). Resolving on the grain the
@@ -212,7 +212,7 @@ func Run(cfg Config) (exitCode int, err error) {
 	agent := cfg.Agent
 	if spec.Grain != containerGrainName {
 		if cfg.RequestedContainerGrain {
-			return BlockedExitCode, fmt.Errorf("BLOCKED: --grain container was requested but the running daemon provisions %q boundaries; stop it (`mad-substrate daemon stop`) and re-launch so a container-grain daemon starts, rather than run %q on the host", grainLabel(spec.Grain), cfg.Agent)
+			return BlockedExitCode, fmt.Errorf("BLOCKED: --grain container was requested but the running daemon provisions %q boundaries; stop it (`mad-trellis daemon stop`) and re-launch so a container-grain daemon starts, rather than run %q on the host", grainLabel(spec.Grain), cfg.Agent)
 		}
 		if cfg.ResolveAgent != nil {
 			resolved, rerr := cfg.ResolveAgent(cfg.Agent)
@@ -243,7 +243,7 @@ func Run(cfg Config) (exitCode int, err error) {
 	}
 
 	// Export the token into the agent env (alongside MAD_SESSION). The
-	// cooperative layer (mad-substrate mcp / hook) reads MAD_SESSION_TOKEN and
+	// cooperative layer (mad-trellis mcp / hook) reads MAD_SESSION_TOKEN and
 	// session.attach'es it to act under the SHARED session identity (Inv 4: the
 	// token is the only identity path; the cooperative client can never name the
 	// session id directly). spec.Env is a COPY (EnvSpec.Env hands back a copy), so
@@ -328,14 +328,14 @@ func Run(cfg Config) (exitCode int, err error) {
 		// The detailed reasons above go through logf, which the production launcher routes
 		// to os.Stderr ONLY under MAD_DEBUG (nil/discard otherwise) — so by default
 		// the operator never learns whether the cooperative plane came up. This ONE concise
-		// line goes UNCONDITIONALLY to os.Stderr — the SAME stream and "mad-substrate:" prefix
+		// line goes UNCONDITIONALLY to os.Stderr — the SAME stream and "mad-trellis:" prefix
 		// the post-exec conductor status lines use — and is emitted PRE-exec, before RunPTY
 		// puts the terminal in raw mode and bridges stdout to the child PTY, so it reliably
 		// survives to the operator at launch.
 		if coopPlaneUp {
-			fmt.Fprintln(os.Stderr, "mad-substrate: cooperative plane up (in-container coordination enabled)")
+			fmt.Fprintln(os.Stderr, "mad-trellis: cooperative plane up (in-container coordination enabled)")
 		} else {
-			fmt.Fprintln(os.Stderr, "mad-substrate: cooperative plane unavailable — agent runs confined without it")
+			fmt.Fprintln(os.Stderr, "mad-trellis: cooperative plane unavailable — agent runs confined without it")
 		}
 	}
 
@@ -359,7 +359,7 @@ func Run(cfg Config) (exitCode int, err error) {
 				wtDir = spec.Cwd
 			}
 			if bin, berr := coopwiring.BinaryPath(); berr != nil {
-				logf("coop: cannot resolve the mad-substrate binary (%v); launching %q without cooperative wiring", berr, cfg.Agent)
+				logf("coop: cannot resolve the mad-trellis binary (%v); launching %q without cooperative wiring", berr, cfg.Agent)
 			} else if res, werr := coopwiring.Wire(host, wtDir, bin); werr != nil {
 				logf("coop: cooperative wiring failed (%v); launching %q governed but uncooperative", werr, cfg.Agent)
 			} else {
@@ -377,10 +377,10 @@ func Run(cfg Config) (exitCode int, err error) {
 	// plane came up (2c), a real claude/codex INSIDE the container can reach the daemon
 	// through the relay (MAD_SOCKET → the relay socket; MAD_SESSION_TOKEN is
 	// already in the exec env). But THIS binary is darwin and absent from the guest, so
-	// we STAGE the embedded static LINUX mad-substrate binary into the container's writable
+	// we STAGE the embedded static LINUX mad-trellis binary into the container's writable
 	// scratch (the same stage mechanism as the relay) and run coopwiring.Wire against
 	// the IN-CONTAINER CLONE (spec.HostWorktree, bind-mounted at /work), pointing the
-	// MCP server `command` at the STAGED in-container mad-substrate path with arg "mcp". The
+	// MCP server `command` at the STAGED in-container mad-trellis path with arg "mcp". The
 	// in-container agent then runs `<staged> mcp`, which dials MAD_SOCKET and
 	// session.attach'es with MAD_SESSION_TOKEN to act under THIS session (Inv 4).
 	// coopwiring git-EXCLUDES every file it writes — the clone is a real git repo whose
@@ -396,7 +396,7 @@ func Run(cfg Config) (exitCode int, err error) {
 				// for the container grain); prepend Codex's `-c` overrides (empty for Claude).
 				agentArgs = append(append([]string{}, res.ExtraArgs...), agentArgs...)
 				if len(res.Wrote) > 0 || len(res.ExtraArgs) > 0 {
-					logf("coop: wired %s in-container cooperative layer (mcp via staged mad-substrate)", host)
+					logf("coop: wired %s in-container cooperative layer (mcp via staged mad-trellis)", host)
 				}
 			}
 		}
@@ -405,7 +405,7 @@ func Run(cfg Config) (exitCode int, err error) {
 	// Capture the convergence target from the launch cwd (the worktree the user
 	// launched from) BEFORE the agent runs, and resolve the conductor policy from
 	// the repo manifest. All best-effort: any failure disables auto-convergence
-	// (fall back to manual `mad-substrate integrate`), it never blocks the launch.
+	// (fall back to manual `mad-trellis integrate`), it never blocks the launch.
 	launchCwd, _ := os.Getwd()
 	var targetBranch, repoRoot, gateCmd string
 	conductorEnabled := false
@@ -503,7 +503,7 @@ func Run(cfg Config) (exitCode int, err error) {
 			}
 		}
 		if dec.off {
-			fmt.Fprintf(os.Stderr, "mad-substrate: %s staged onto %s — run: mad-substrate integrate %s\n", spec.Branch, targetBranch, spec.Branch)
+			fmt.Fprintf(os.Stderr, "mad-trellis: %s staged onto %s — run: mad-trellis integrate %s\n", spec.Branch, targetBranch, spec.Branch)
 		}
 		if dec.converge {
 			func() {
@@ -511,7 +511,7 @@ func Run(cfg Config) (exitCode int, err error) {
 				// FRESH connection: the session conn (sess) still has its keepalive renew
 				// goroutine running, so reusing it would race a concurrent Call on one
 				// connection. A bare connection is allowed to do trunk-lease ops (this
-				// mirrors how `mad-substrate integrate` dials fresh, leases, and closes).
+				// mirrors how `mad-trellis integrate` dials fresh, leases, and closes).
 				conn, derr := dial(cfg.Socket)
 				if derr != nil {
 					logf("conductor: cannot dial daemon (%v); skipping auto-converge of %s", derr, spec.Branch)
@@ -537,13 +537,13 @@ func Run(cfg Config) (exitCode int, err error) {
 				})
 				switch res.Status {
 				case conductor.StatusConverged:
-					fmt.Fprintf(os.Stderr, "mad-substrate: converged %s onto %s\n", spec.Branch, targetBranch)
+					fmt.Fprintf(os.Stderr, "mad-trellis: converged %s onto %s\n", spec.Branch, targetBranch)
 				case conductor.StatusConflict:
-					fmt.Fprintf(os.Stderr, "mad-substrate: %s conflicts with %s — not merged; resolve with `mad-substrate integrate %s`\n", spec.Branch, targetBranch, spec.Branch)
+					fmt.Fprintf(os.Stderr, "mad-trellis: %s conflicts with %s — not merged; resolve with `mad-trellis integrate %s`\n", spec.Branch, targetBranch, spec.Branch)
 				case conductor.StatusGateFailed:
-					fmt.Fprintf(os.Stderr, "mad-substrate: gate failed for %s — not merged (%s); fix and run `mad-substrate integrate %s`\n", spec.Branch, res.Reason, spec.Branch)
+					fmt.Fprintf(os.Stderr, "mad-trellis: gate failed for %s — not merged (%s); fix and run `mad-trellis integrate %s`\n", spec.Branch, res.Reason, spec.Branch)
 				case conductor.StatusError:
-					fmt.Fprintf(os.Stderr, "mad-substrate: auto-converge unavailable (%s); run `mad-substrate integrate %s` manually\n", res.Reason, spec.Branch)
+					fmt.Fprintf(os.Stderr, "mad-trellis: auto-converge unavailable (%s); run `mad-trellis integrate %s` manually\n", res.Reason, spec.Branch)
 				case conductor.StatusSkipped:
 					logf("conductor: skipped %s (%s)", spec.Branch, res.Reason)
 				}
@@ -652,7 +652,7 @@ func stdioIsInteractive() bool {
 // ⇒ true (converge); "n"/"no" ⇒ false (stage). FAIL-SOFT: a read error returns true so
 // a flaky terminal never strands the agent's work. Only called when stdio is a TTY.
 func promptConverge(branch, target string) bool {
-	fmt.Fprintf(os.Stderr, "mad-substrate: converge %s onto %s? [Y/n] ", branch, target)
+	fmt.Fprintf(os.Stderr, "mad-trellis: converge %s onto %s? [Y/n] ", branch, target)
 	line, err := bufio.NewReader(os.Stdin).ReadString('\n')
 	if err != nil && strings.TrimSpace(line) == "" {
 		return true // fail-soft: never strand work on a prompt read error
@@ -705,10 +705,10 @@ func coopHost(agent string) string {
 	}
 }
 
-// wireContainerMCP stages the embedded static linux mad-substrate binary into the
+// wireContainerMCP stages the embedded static linux mad-trellis binary into the
 // container's writable scratch dir and generates the agent's MCP config against the
 // IN-CONTAINER CLONE (hostWorktree, bind-mounted at /work), with the MCP server
-// `command` pointed at the STAGED in-container mad-substrate path + arg "mcp". The scratch
+// `command` pointed at the STAGED in-container mad-trellis path + arg "mcp". The scratch
 // dir is bind-mounted at its IDENTICAL host path in the container, so the staged HOST
 // path IS the in-container exec path the agent will run. Returns the agent ExtraArgs
 // (Codex `-c` overrides; empty for Claude) plus the coopwiring Result.
@@ -718,7 +718,7 @@ func coopHost(agent string) string {
 // be a recognized cooperative host ("claude"|"codex"); an unrecognized host yields a
 // zero Result and nil error (coopwiring.Wire's contract). Pure except for the staging
 // filesystem write + coopwiring's config write/git-exclude, so it is unit-testable with
-// a temp git repo + temp scratch and an injected madSubstrateBytesFn — no container runtime.
+// a temp git repo + temp scratch and an injected madTrellisBytesFn — no container runtime.
 func wireContainerMCP(host, hostWorktree, scratchDir, goarch string, logf func(string, ...any)) (coopwiring.Result, error) {
 	if logf == nil {
 		logf = func(string, ...any) {}
@@ -726,11 +726,11 @@ func wireContainerMCP(host, hostWorktree, scratchDir, goarch string, logf func(s
 	if strings.TrimSpace(hostWorktree) == "" {
 		return coopwiring.Result{}, fmt.Errorf("no in-container clone path to wire")
 	}
-	staged, err := stageMadSubstrate(scratchDir, goarch)
+	staged, err := stageMadTrellis(scratchDir, goarch)
 	if err != nil {
-		return coopwiring.Result{}, fmt.Errorf("stage in-container mad-substrate: %w", err)
+		return coopwiring.Result{}, fmt.Errorf("stage in-container mad-trellis: %w", err)
 	}
-	logf("coop: staged in-container mad-substrate at %s", staged)
+	logf("coop: staged in-container mad-trellis at %s", staged)
 	return coopwiring.Wire(host, hostWorktree, staged)
 }
 

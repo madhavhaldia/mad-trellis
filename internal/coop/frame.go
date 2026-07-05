@@ -1,5 +1,5 @@
 // Package coop carries the cooperative-plane wire framing shared by the
-// in-container relay (cmd/mad-substrate-relay) and the host launcher pump
+// in-container relay (cmd/mad-trellis-relay) and the host launcher pump
 // (internal/launcher/coop.go). It is the #2 "cooperative socket-into-container"
 // transport: because Apple `container` has NO host→container unix-socket forward
 // (chafe C29) and the confined default is `--network none`, the launcher tunnels

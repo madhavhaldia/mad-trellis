@@ -4,7 +4,7 @@
 // `conformance` — it builds a real binary and boots real daemons, so it is gated
 // off the default `go test`). It:
 //
-//  1. builds a cgo-free mad-substrate binary to a temp dir;
+//  1. builds a cgo-free mad-trellis binary to a temp dir;
 //  2. runs RunGate and asserts AllPass (the self-hosting-day GREEN);
 //  3. runs EVERY check's Control on a fresh hermetic Scratch and asserts each
 //     control proves its check is non-vacuous (the injected violation IS caught);
@@ -25,18 +25,18 @@ import (
 	"testing"
 )
 
-// buildBinary compiles a cgo-free mad-substrate binary to a temp path the gate drives.
+// buildBinary compiles a cgo-free mad-trellis binary to a temp path the gate drives.
 func buildBinary(t *testing.T) string {
 	t.Helper()
 	goBin, err := exec.LookPath("go")
 	if err != nil {
 		t.Skip("go toolchain not on PATH")
 	}
-	out := filepath.Join(t.TempDir(), "mad-substrate-conform")
-	cmd := exec.Command(goBin, "build", "-o", out, "github.com/madhavhaldia/mad-substrate/cmd/mad-substrate")
+	out := filepath.Join(t.TempDir(), "mad-trellis-conform")
+	cmd := exec.Command(goBin, "build", "-o", out, "github.com/madhavhaldia/mad-trellis/cmd/mad-trellis")
 	cmd.Env = append(os.Environ(), "CGO_ENABLED=0") // cgo-free build (modernc sqlite)
 	if b, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("build mad-substrate binary: %v\n%s", err, b)
+		t.Fatalf("build mad-trellis binary: %v\n%s", err, b)
 	}
 	return out
 }

@@ -3,8 +3,8 @@ package liveness
 import (
 	"encoding/json"
 
-	"github.com/madhavhaldia/mad-substrate/internal/daemon"
-	"github.com/madhavhaldia/mad-substrate/internal/protocol"
+	"github.com/madhavhaldia/mad-trellis/internal/daemon"
+	"github.com/madhavhaldia/mad-trellis/internal/protocol"
 )
 
 // RegisterMethods exposes liveness.scan — an on-demand recovery pass (the same

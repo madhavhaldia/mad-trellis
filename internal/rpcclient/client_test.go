@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/protocol"
+	"github.com/madhavhaldia/mad-trellis/internal/protocol"
 )
 
 // TestDefaultReadTimeoutIsGenerous guards against re-tightening the per-call

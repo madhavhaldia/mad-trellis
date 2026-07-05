@@ -11,8 +11,8 @@
 | Layer | Choice | Rationale |
 |-------|--------|-----------|
 | **Core engine / CLI / daemon** | **Go** | Native language of this category (Docker, k8s, containerd, Tailscale, `gh`). Process/PTY/FS/container control are first-class. Single static binary. Best **agent-iteration loop** for a systems daemon: fast compiles, explicit errors, `gofmt`/`vet`, one-obvious-way → low ambiguity, tight self-correction. |
-| **Lease ledger** | **Embedded SQLite** | Atomic transactions (Inv. 2) + durable (Inv. 3) with **zero external infra** — mad-substrate stays standalone. Redis only if we ever need multi-host; not now. |
-| **Cooperative layer** (Claude Code first) | **Native Go** (in the single binary) | The `mad-substrate mcp` MCP server + `mad-substrate hook <event>` handler — thin: translate agent calls → daemon API. No separate Node/TS toolchain. |
+| **Lease ledger** | **Embedded SQLite** | Atomic transactions (Inv. 2) + durable (Inv. 3) with **zero external infra** — mad-trellis stays standalone. Redis only if we ever need multi-host; not now. |
+| **Cooperative layer** (Claude Code first) | **Native Go** (in the single binary) | The `mad-trellis mcp` MCP server + `mad-trellis hook <event>` handler — thin: translate agent calls → daemon API. No separate Node/TS toolchain. |
 | **Daemon protocol** (CLI/cooperative layer ↔ daemon) | **Local Unix-socket JSON-RPC** | Simple, stable, language-agnostic. Keeps the agent-facing MCP protocol decoupled from the daemon's own API (Inv. 10). |
 | **Isolation substrate** | **Conduct existing tools** — `git worktree`, Docker, a VM tool (Lima/Tart) | Never reimplement (doc 0001). macOS + Apple Silicon first. **v1 grain = worktree**; grain is a dial widened later. |
 | **Distribution** | **Single Go binary** | `brew install` later. No runtime to ship. |
@@ -45,8 +45,8 @@ path.
 Verified against official sources (go.dev/dl, proxy.golang.org, GitHub releases), not from memory.
 Re-verify before a fresh `go mod tidy`. ⚠ = moved past what older tooling/assumptions expect.
 
-> The cooperative layer is now **native Go** inside the single binary (the `mad-substrate mcp` /
-> `mad-substrate hook` subcommands) — there is no separate Node / pnpm / TypeScript toolchain.
+> The cooperative layer is now **native Go** inside the single binary (the `mad-trellis mcp` /
+> `mad-trellis hook` subcommands) — there is no separate Node / pnpm / TypeScript toolchain.
 
 ### Toolchains
 | Tool | Version | Notes |
@@ -69,7 +69,7 @@ Daemon protocol: hand-rolled minimal **JSON-RPC 2.0 over Unix socket on stdlib `
 dep. Tests: stdlib **`testing`**.
 
 ### Cooperative layer (Claude Code first)
-Native Go in the single binary — the `mad-substrate mcp` MCP server + the `mad-substrate hook <event>`
+Native Go in the single binary — the `mad-trellis mcp` MCP server + the `mad-trellis hook <event>`
 handler (`internal/mcp`, `internal/coophook`, `internal/coopclient`, auto-wired by
 `internal/coopwiring`). It speaks the agent-facing MCP dialect over the frozen daemon JSON-RPC and
 adds no third-party dependency — no Node / pnpm / TypeScript / `@modelcontextprotocol/sdk`.

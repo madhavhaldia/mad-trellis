@@ -1,6 +1,6 @@
-# Contributing to mad-substrate
+# Contributing to mad-trellis
 
-Thanks for your interest! mad-substrate is a safety-critical substrate, so the bar for changes is
+Thanks for your interest! mad-trellis is a safety-critical substrate, so the bar for changes is
 correctness first. This guide covers the dev setup, the checks your change must pass, and the PR
 process.
 
@@ -17,9 +17,9 @@ Requirements:
   (these tests *skip with a reason* when no runtime is present, so they're optional)
 
 ```sh
-git clone https://github.com/madhavhaldia/mad-substrate
-cd mad-substrate
-make build          # cgo-free binary -> dist/mad-substrate
+git clone https://github.com/madhavhaldia/mad-trellis
+cd mad-trellis
+make build          # cgo-free binary -> dist/mad-trellis
 make test           # full suite under the race detector
 make conform        # the executable safety gate (must be GREEN)
 ```
@@ -38,7 +38,7 @@ make conform                     # exit 0 = GREEN
 
 Notes:
 
-- **cgo-free is non-negotiable for the binary.** `CGO_ENABLED=0 go build ./cmd/mad-substrate` must
+- **cgo-free is non-negotiable for the binary.** `CGO_ENABLED=0 go build ./cmd/mad-trellis` must
   succeed. The race detector (`make test`) needs cgo, which is fine — that's the test build, not the
   ship build.
 - **The JSON-RPC registry is frozen.** Adding, renaming, or removing a daemon method is a
@@ -52,9 +52,9 @@ Notes:
 
 ### The cooperative layer
 
-The cooperative layer is **native Go**, built into the single binary as the `mad-substrate mcp` and
-`mad-substrate hook <event>` subcommands (`internal/mcp`, `internal/coophook`, `internal/coopclient`,
-auto-wired into `mad-substrate launch` by `internal/coopwiring`). It is **advisory and fail-soft** (any
+The cooperative layer is **native Go**, built into the single binary as the `mad-trellis mcp` and
+`mad-trellis hook <event>` subcommands (`internal/mcp`, `internal/coophook`, `internal/coopclient`,
+auto-wired into `mad-trellis launch` by `internal/coopwiring`). It is **advisory and fail-soft** (any
 daemon-layer failure falls back to allowing the operation; it must never make a governed session
 more fragile than a bare one) and is covered by the normal `make test` sweep — no separate
 toolchain.
@@ -74,7 +74,7 @@ naming; favor clarity over cleverness in this codebase.
 
 ## How the maintainers integrate (context, not a requirement)
 
-mad-substrate develops *itself* through its own governed loop (`mad-substrate trunk submit/promote` onto a
+mad-trellis develops *itself* through its own governed loop (`mad-trellis trunk submit/promote` onto a
 mediated trunk — see [docs/0005](./docs/0005-governed-trunk-loop.md)). **You do not need any of
 that to contribute** — a normal GitHub fork-and-PR is all that's expected. The self-hosting loop is
 how maintainers land reviewed changes; it's a nice thing to read about, not a contributor

@@ -3,7 +3,7 @@ package launcher
 import (
 	"os"
 
-	"github.com/madhavhaldia/mad-substrate/internal/rpcclient"
+	"github.com/madhavhaldia/mad-trellis/internal/rpcclient"
 )
 
 // RunIntegratorPTY runs an integrator agent in the current worktree: PTY plumbing

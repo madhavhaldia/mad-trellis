@@ -1,4 +1,4 @@
-// Package coopclient is the shared "cooperative client" half of mad-substrate's
+// Package coopclient is the shared "cooperative client" half of mad-trellis's
 // native-Go cooperative layer — the in-process Go counterpart of the (now
 // deleted) TypeScript adapter. It is a SECOND client of the daemon's FROZEN
 // JSON-RPC registry (the first being the CLI's out-of-process rpcclient
@@ -14,7 +14,7 @@
 //     rpcclient connection for the Client's life and serialize every Call behind
 //     a mutex; we never pass a holder/session as an RPC argument.
 //
-//   - Inv 13 (fail-soft is the law): mad-substrate advises, it does not block work.
+//   - Inv 13 (fail-soft is the law): mad-trellis advises, it does not block work.
 //     A daemon that is slow, unreachable, or returns a malformed reply must
 //     never deny an edit. Every method resolves ambiguity toward best-effort and
 //     never throws.
@@ -34,8 +34,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/rpcclient"
-	"github.com/madhavhaldia/mad-substrate/internal/runtimecfg"
+	"github.com/madhavhaldia/mad-trellis/internal/rpcclient"
+	"github.com/madhavhaldia/mad-trellis/internal/runtimecfg"
 )
 
 // Default lease/RPC parameters used when the corresponding env var is absent,
@@ -68,7 +68,7 @@ func Load() Config {
 	return Config{
 		// runtimecfg owns the socket precedence: MAD_SOCKET wins, else
 		// <runtime-dir>/daemon.sock where runtime-dir is
-		// MAD_RUNTIME_DIR > MAD_HOME > ~/.mad-substrate.
+		// MAD_RUNTIME_DIR > MAD_HOME > ~/.mad-trellis.
 		Socket:     runtimecfg.SocketPath(""),
 		Session:    strings.TrimSpace(os.Getenv("MAD_SESSION")),
 		Token:      strings.TrimSpace(os.Getenv("MAD_SESSION_TOKEN")),

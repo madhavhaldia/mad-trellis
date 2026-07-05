@@ -1,3 +1,5 @@
+//go:build !coopembed
+
 package coopembed
 
 import "testing"
@@ -18,8 +20,8 @@ func TestStubReportsNoAssets(t *testing.T) {
 		if b, ok := RelayBytes(arch); ok || b != nil {
 			t.Fatalf("stub RelayBytes(%q) = (%v, %v); want (nil, false)", arch, b, ok)
 		}
-		if b, ok := MadSubstrateBytes(arch); ok || b != nil {
-			t.Fatalf("stub MadSubstrateBytes(%q) = (%v, %v); want (nil, false)", arch, b, ok)
+		if b, ok := MadTrellisBytes(arch); ok || b != nil {
+			t.Fatalf("stub MadTrellisBytes(%q) = (%v, %v); want (nil, false)", arch, b, ok)
 		}
 	}
 }

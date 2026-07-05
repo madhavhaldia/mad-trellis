@@ -23,8 +23,8 @@ import (
 )
 
 const (
-	conformancePkg = "github.com/madhavhaldia/mad-substrate/internal/conformance"
-	modulePrefix   = "github.com/madhavhaldia/mad-substrate/"
+	conformancePkg = "github.com/madhavhaldia/mad-trellis/internal/conformance"
+	modulePrefix   = "github.com/madhavhaldia/mad-trellis/"
 	internalPrefix = modulePrefix + "internal/"
 )
 

@@ -1,6 +1,6 @@
-// Package mcp is the agent-facing half of mad-substrate's cooperative layer: a
+// Package mcp is the agent-facing half of mad-trellis's cooperative layer: a
 // hand-rolled MCP (Model Context Protocol) server, spoken over stdio, that
-// exposes mad-substrate's six cooperative tools to a coding agent. It is the
+// exposes mad-trellis's six cooperative tools to a coding agent. It is the
 // Inv-10 "agent dialect" the daemon's frozen protocol deliberately omits — it
 // couples to the daemon ONLY through internal/coopclient (a second client of
 // the frozen registry), never to the wire surface directly.
@@ -38,10 +38,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/conductor"
-	"github.com/madhavhaldia/mad-substrate/internal/coopclient"
-	"github.com/madhavhaldia/mad-substrate/internal/rpcclient"
-	"github.com/madhavhaldia/mad-substrate/internal/runtimecfg"
+	"github.com/madhavhaldia/mad-trellis/internal/conductor"
+	"github.com/madhavhaldia/mad-trellis/internal/coopclient"
+	"github.com/madhavhaldia/mad-trellis/internal/rpcclient"
+	"github.com/madhavhaldia/mad-trellis/internal/runtimecfg"
 )
 
 // maxLine bounds a single MCP message. Agent tool calls are tiny (a path or a
@@ -261,7 +261,7 @@ type server struct {
 	// It is set once by acquireIntegratorPresence (synchronously, before the
 	// presence goroutine is started — the go statement provides the happens-before)
 	// and only read by presenceRenewLoop. For the default singleton (pool size 1)
-	// it is the well-known mad-substrate:integrator:v1 key; for an opt-in pool it is
+	// it is the well-known mad-trellis:integrator:v1 key; for an opt-in pool it is
 	// the specific slot key this integrator acquired.
 	presenceKey string
 
@@ -524,16 +524,16 @@ func (s *server) untrack(path string) {
 }
 
 // integratorPresenceKey is the base64 of the well-known presence key bytes
-// `mad-substrate:integrator:v1`. A sibling CLI reads it via lease.inspect to learn
+// `mad-trellis:integrator:v1`. A sibling CLI reads it via lease.inspect to learn
 // whether an integrator MCP server is already live.
-var integratorPresenceKey = base64.StdEncoding.EncodeToString([]byte("mad-substrate:integrator:v1"))
+var integratorPresenceKey = base64.StdEncoding.EncodeToString([]byte("mad-trellis:integrator:v1"))
 
 // integratorPresenceTTL is the presence lease TTL; renew runs at half this.
 const integratorPresenceTTL = 60 * time.Second
 
 // integratorPoolEnv is the OPT-IN knob for the integrator POOL size. Empty /
 // unparseable / <=1 ⇒ N=1 ⇒ EXACTLY the singleton behavior (one integrator per
-// trunk, the SAME mad-substrate:integrator:v1 key the CLI status inspects).
+// trunk, the SAME mad-trellis:integrator:v1 key the CLI status inspects).
 const integratorPoolEnv = "MAD_INTEGRATOR_POOL"
 
 // integratorPoolSize reads integratorPoolEnv. Default/empty/unparseable/<=1 ⇒ 1.
@@ -551,9 +551,9 @@ func integratorPoolSize() int {
 
 // integratorSlotKeys returns the base64 presence-lease keys for an N-slot pool,
 // in slot order. For N<=1 it returns EXACTLY the singleton key
-// mad-substrate:integrator:v1 (byte-identical to the pre-pool behavior — the same key
-// `mad-substrate integrator status` inspects). For N>1 it returns one key per slot:
-// mad-substrate:integrator:v1:slot-0 ... slot-(N-1).
+// mad-trellis:integrator:v1 (byte-identical to the pre-pool behavior — the same key
+// `mad-trellis integrator status` inspects). For N>1 it returns one key per slot:
+// mad-trellis:integrator:v1:slot-0 ... slot-(N-1).
 //
 // Rationale (R9): running N>1 integrators concurrently is SAFE — it is
 // convergence-plane PARALLELISM, not a mesh. (a) Each integrator claims DISTINCT
@@ -572,11 +572,11 @@ func integratorSlotKeys(n int) []string {
 
 func integratorSlotRawKeys(n int) [][]byte {
 	if n <= 1 {
-		return [][]byte{[]byte("mad-substrate:integrator:v1")}
+		return [][]byte{[]byte("mad-trellis:integrator:v1")}
 	}
 	keys := make([][]byte, n)
 	for i := 0; i < n; i++ {
-		raw := fmt.Sprintf("mad-substrate:integrator:v1:slot-%d", i)
+		raw := fmt.Sprintf("mad-trellis:integrator:v1:slot-%d", i)
 		keys[i] = []byte(raw)
 	}
 	return keys
@@ -585,7 +585,7 @@ func integratorSlotRawKeys(n int) [][]byte {
 // acquireIntegratorPresence performs the ONE synchronous, refuse-gating acquire
 // of an integrator presence/slot lease, run before the server serves any request.
 // With the default pool size 1 there is a single slot (the well-known
-// mad-substrate:integrator:v1 key) and the behavior is byte-identical to the historic
+// mad-trellis:integrator:v1 key) and the behavior is byte-identical to the historic
 // singleton. With an opt-in pool (N>1) it acquires the FIRST FREE slot among
 // slot-0..slot-(N-1).
 //
@@ -759,7 +759,7 @@ func (s *server) drainIntegrationNudges() []string {
 }
 
 // writePresencePidfile records THIS integrator MCP server's OS pid in a pidfile
-// beside the ledger so `mad-substrate integrator stop` can find and SIGTERM it (the
+// beside the ledger so `mad-trellis integrator stop` can find and SIGTERM it (the
 // signal the server handles by releasing its presence lease — the tested clean-
 // release path). keyB64 is the base64 presence slot key this server holds. Best-
 // effort: any failure is logged and ignored, leaving stop to fall back to the TTL

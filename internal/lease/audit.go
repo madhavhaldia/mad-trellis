@@ -3,7 +3,7 @@ package lease
 import (
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/daemon"
+	"github.com/madhavhaldia/mad-trellis/internal/daemon"
 )
 
 // AuditSink is the durable, append-only SQLite-backed implementation of

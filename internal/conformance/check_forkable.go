@@ -12,7 +12,7 @@ import (
 // coordination channel (GROUNDING L138; docs/0003 §10a; clause owned by the
 // conjunction, the forkable half rooted in isolation-substrate / Inv 1).
 //
-// BLACK BOX: it spawns two boundaries over the public `mad-substrate spawn` CLI and
+// BLACK BOX: it spawns two boundaries over the public `mad-trellis spawn` CLI and
 // asserts, over OBSERVABLE state only (the reported cwd/branch/ports + the
 // filesystem), that the two boundaries are disjoint (distinct cwd, distinct
 // branch, disjoint port blocks, disjoint local-state roots) and that one agent's

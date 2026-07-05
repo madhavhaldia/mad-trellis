@@ -7,12 +7,12 @@ import (
 
 // check_nodispatch.go proves the NO-GOALS / NO-TASK-DISPATCH negative obligation
 // (docs/0003 §10a "the no-goals/no-dispatch check"; Inv 13, owned by
-// session-launcher-shim). mad-substrate is a governance SUBSTRATE, not an
+// session-launcher-shim). mad-trellis is a governance SUBSTRATE, not an
 // orchestrator: NO public method or CLI affordance accepts a GOAL, dispatches
 // work, or triggers an agent. The task-intake seam is deliberately EMPTY.
 //
 // BLACK BOX over the public surface only:
-//   - the CLI: `mad-substrate launch` (the closest thing to "run an agent") rejects a
+//   - the CLI: `mad-trellis launch` (the closest thing to "run an agent") rejects a
 //     --goal/--task/--prompt flag — the only inputs are the socket, a port count,
 //     and the OPAQUE agent command after `--`, forwarded verbatim. No subcommand
 //     takes a goal.
@@ -38,7 +38,7 @@ func (noDispatch) Clause() string {
 }
 
 // dispatchFlags are goal/dispatch-shaped CLI flags that MUST NOT be accepted by
-// any subcommand (their presence would mean mad-substrate schedules work).
+// any subcommand (their presence would mean mad-trellis schedules work).
 var dispatchFlags = []string{"--goal", "--task", "--prompt", "--dispatch", "--objective", "--mission"}
 
 // dispatchMethods are goal/dispatch-shaped RPC methods that MUST NOT be in the
@@ -66,7 +66,7 @@ func (c noDispatch) Run(s *Scratch) Result {
 			// "unknown flag" complaint AND it did not fail on the flag), that is a
 			// dispatch affordance.
 			if flagAccepted(res) {
-				return fail(c, "DISPATCH AFFORDANCE: `mad-substrate %s` accepted goal/dispatch flag %s: %s",
+				return fail(c, "DISPATCH AFFORDANCE: `mad-trellis %s` accepted goal/dispatch flag %s: %s",
 					strings.Join(sub, " "), flag, strings.TrimSpace(res.Out()))
 			}
 		}

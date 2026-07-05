@@ -3,7 +3,7 @@ package conformance
 import (
 	"fmt"
 
-	"github.com/madhavhaldia/mad-substrate/internal/rpcclient"
+	"github.com/madhavhaldia/mad-trellis/internal/rpcclient"
 )
 
 // check_contention.go proves the Wing-4 SAME-PATH CONTENTION fairness clause (R8):

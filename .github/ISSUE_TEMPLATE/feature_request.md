@@ -8,7 +8,7 @@ assignees: ""
 
 ## Problem
 
-What are you trying to do that mad-substrate doesn't support today?
+What are you trying to do that mad-trellis doesn't support today?
 
 ## Proposed solution
 

@@ -5,7 +5,7 @@
 // doctor (daemon down), init, daemon up, status (running), stop, status (gone) —
 // to prove a shipped binary actually works, not just compiles.
 //
-// HERMETICITY (load-bearing): this test NEVER touches the real ~/.mad-substrate and
+// HERMETICITY (load-bearing): this test NEVER touches the real ~/.mad-trellis and
 // NEVER talks to a real daemon. Everything it exercises is either a freshly built
 // binary in t.TempDir() or a scratch path it created and tears down:
 //   - the runtime dir is a scratch MAD_RUNTIME_DIR (also pinned via
@@ -32,7 +32,7 @@ import (
 	"time"
 )
 
-// hermeticEnv returns the environment every mad-substrate/git invocation in the smoke
+// hermeticEnv returns the environment every mad-trellis/git invocation in the smoke
 // test runs under: a scratch runtime dir pinned through ALL the runtime-dir env
 // vars (so no resolver can reach $HOME), an explicit socket, and neutered git
 // config. It starts from os.Environ() so PATH/toolchain stay intact, then
@@ -42,7 +42,7 @@ func hermeticEnv(runtimeDir, socket string) []string {
 	overrides := map[string]string{
 		// Pin the runtime dir everywhere a resolver might look (Go reads
 		// _RUNTIME_DIR then _HOME; pin both, plus the worktree/state dirs, so a
-		// fallback to the user's real ~/.mad-substrate is impossible).
+		// fallback to the user's real ~/.mad-trellis is impossible).
 		"MAD_RUNTIME_DIR":  runtimeDir,
 		"MAD_HOME":         runtimeDir,
 		"MAD_WORKTREE_DIR": filepath.Join(runtimeDir, "worktrees"),
@@ -90,7 +90,7 @@ func runGit(t *testing.T, dir string, env []string, args ...string) {
 	}
 }
 
-// nm runs the built mad-substrate binary with args, cwd, and the hermetic env, and
+// nm runs the built mad-trellis binary with args, cwd, and the hermetic env, and
 // returns combined output + exit code (-1 if it failed to start).
 func nm(t *testing.T, bin, dir string, env, args []string) (string, int) {
 	t.Helper()
@@ -144,12 +144,12 @@ func TestSmokeCleanTarget(t *testing.T) {
 	root := repoRoot(t)
 
 	// --- build the binary, cgo-free, into a scratch dir ---------------------
-	bin := filepath.Join(t.TempDir(), "mad-substrate")
-	build := exec.Command("go", "build", "-o", bin, "./cmd/mad-substrate")
+	bin := filepath.Join(t.TempDir(), "mad-trellis")
+	build := exec.Command("go", "build", "-o", bin, "./cmd/mad-trellis")
 	build.Dir = root
 	build.Env = append(os.Environ(), "CGO_ENABLED=0")
 	if out, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("CGO_ENABLED=0 build of ./cmd/mad-substrate failed: %v\n%s", err, out)
+		t.Fatalf("CGO_ENABLED=0 build of ./cmd/mad-trellis failed: %v\n%s", err, out)
 	}
 
 	// --- scratch runtime dir + a SHORT /tmp socket --------------------------
@@ -174,13 +174,13 @@ func TestSmokeCleanTarget(t *testing.T) {
 
 	env := hermeticEnv(runtimeDir, sock)
 
-	// --- version -> exit 0, mentions mad-substrate ------------------------------
+	// --- version -> exit 0, mentions mad-trellis ------------------------------
 	out, code := nm(t, bin, root, env, []string{"version"})
 	if code != 0 {
 		t.Fatalf("`version` exit %d; want 0\n%s", code, out)
 	}
-	if !strings.Contains(out, "mad-substrate") {
-		t.Fatalf("`version` output must contain \"mad-substrate\"; got %q", out)
+	if !strings.Contains(out, "mad-trellis") {
+		t.Fatalf("`version` output must contain \"mad-trellis\"; got %q", out)
 	}
 
 	// --- a scratch governed git repo (the daemon cwd) -----------------------
@@ -190,8 +190,8 @@ func TestSmokeCleanTarget(t *testing.T) {
 	}
 	runGit(t, repo, env, "init", "-b", "main")
 	// A local identity so the seed commit succeeds under the neutered git config.
-	runGit(t, repo, env, "config", "user.email", "smoke@mad-substrate.test")
-	runGit(t, repo, env, "config", "user.name", "mad-substrate smoke")
+	runGit(t, repo, env, "config", "user.email", "smoke@mad-trellis.test")
+	runGit(t, repo, env, "config", "user.name", "mad-trellis smoke")
 	if err := os.WriteFile(filepath.Join(repo, "README.md"), []byte("# scratch\n"), 0o644); err != nil {
 		t.Fatalf("write seed file: %v", err)
 	}
@@ -210,7 +210,7 @@ func TestSmokeCleanTarget(t *testing.T) {
 		t.Fatalf("`doctor` output must mention \"git\"; got:\n%s", out)
 	}
 
-	// --- init in a scratch dir -> writes mad-substrate.json ---------------------
+	// --- init in a scratch dir -> writes mad-trellis.json ---------------------
 	initDir := filepath.Join(t.TempDir(), "initrepo")
 	if err := os.MkdirAll(initDir, 0o755); err != nil {
 		t.Fatalf("mkdir init dir: %v", err)
@@ -219,8 +219,8 @@ func TestSmokeCleanTarget(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("`init` exit %d; want 0\n%s", code, out)
 	}
-	if _, err := os.Stat(filepath.Join(initDir, "mad-substrate.json")); err != nil {
-		t.Fatalf("`init` must write mad-substrate.json: %v\n%s", err, out)
+	if _, err := os.Stat(filepath.Join(initDir, "mad-trellis.json")); err != nil {
+		t.Fatalf("`init` must write mad-trellis.json: %v\n%s", err, out)
 	}
 
 	// --- start the daemon in the background (cwd = scratch repo) ------------

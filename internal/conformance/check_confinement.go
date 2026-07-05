@@ -8,7 +8,7 @@ import (
 
 // check_confinement.go is the T3 CONFINEMENT TIER: it proves the CONTAINER GRAIN
 // (chafe C5/C13) structurally confines an UNCOOPERATIVE agent, UPGRADING
-// escape-resistance from the worktree grain's grain-RELATIVE honest scope ("mad-substrate
+// escape-resistance from the worktree grain's grain-RELATIVE honest scope ("mad-trellis
 // never HANDS OUT an escaping path") to STRUCTURAL confinement ("an agent that
 // IGNORES the boundary and runs arbitrary shell still cannot escape"). It is the
 // Inv-10 grain dial made real (GROUNDING; docs/0003 §10a; Inv 4 "sandboxed harder").

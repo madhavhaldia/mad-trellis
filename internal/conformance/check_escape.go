@@ -97,7 +97,7 @@ func (c escapeWorktreeFS) Run(s *Scratch) Result {
 	// routed path the substrate handed back is CONTAINED within this boundary's own roots.
 	// The breach is ANY routed path that escapes the boundary, WHEREVER it lands — not just
 	// /etc or a sibling (that narrowing was the vacuity hole the sign-off caught). This
-	// asserts Contain's real, load-bearing guarantee: mad-substrate never HANDS an agent a path
+	// asserts Contain's real, load-bearing guarantee: mad-trellis never HANDS an agent a path
 	// that escapes its boundary.
 	escaper, err := s.Provision(
 		provisionResource{Domain: "path", Ref: "../../../../../../etc/passwd"},
@@ -177,7 +177,7 @@ func (c escapeWorktreeFS) Control(s *Scratch) error {
 // that escapes the boundary — wherever it lands — is a BREACH; the predicate is exhaustive
 // (it never narrows the breach to /etc or a sibling). It fails on zero routed paths so the
 // assertion can never pass vacuously. This is exactly Contain's guarantee (contain.go):
-// mad-substrate never HANDS an agent a path that escapes its boundary.
+// mad-trellis never HANDS an agent a path that escapes its boundary.
 func assertEnvPathsContained(c Check, b Boundary) Result {
 	root := b.StateRoot()
 	checked := 0
@@ -402,7 +402,7 @@ func (c escapeSingularProxy) Run(s *Scratch) Result {
 	// UNCOOPERATIVE: request the proxy resource. We do NOT trust the gate's
 	// self-reported real_reachable — we enumerate EVERY env value it produced and scan
 	// each in RAW + base64/hex/url-DECODED forms for a routable endpoint, asserting
-	// ONLY the non-routable mad-substrate-proxy:// sentinel appears (fix #4: an ENCODED
+	// ONLY the non-routable mad-trellis-proxy:// sentinel appears (fix #4: an ENCODED
 	// endpoint leak that grepping the plaintext would miss is now caught).
 	proxy, err := s.GateRequest(proxyResource)
 	if err != nil {
@@ -411,7 +411,7 @@ func (c escapeSingularProxy) Run(s *Scratch) Result {
 	if proxy.Mode != "proxy" {
 		return fail(c, "the proxy resource must resolve to mode=proxy; got mode=%q", proxy.Mode)
 	}
-	if reason := assertNonRoutableEnv(proxy.Env, "mad-substrate-proxy://"); reason != "" {
+	if reason := assertNonRoutableEnv(proxy.Env, "mad-trellis-proxy://"); reason != "" {
 		return fail(c, "BREACH (proxy env-spec, NOT trusting real_reachable=%v): %s", proxy.RealReachable, reason)
 	}
 	// Defense in depth: the literal real endpoint must not appear in any form either.
@@ -428,7 +428,7 @@ func (c escapeSingularProxy) Run(s *Scratch) Result {
 	if deny.Granted || deny.RealReachable {
 		return fail(c, "an undeclared resource must be granted=false real_reachable=false; got granted=%v real_reachable=%v", deny.Granted, deny.RealReachable)
 	}
-	if leak, found := detectEndpointLeak(deny.Env, "mad-substrate-denied://"); found {
+	if leak, found := detectEndpointLeak(deny.Env, "mad-trellis-denied://"); found {
 		return fail(c, "BREACH: a denied resource's env-spec leaked a routable endpoint: %s", leak)
 	}
 
@@ -459,16 +459,16 @@ func (c escapeSingularProxy) Control(s *Scratch) error {
 	// endpoint" verdict would be vacuous.
 	encoded := base64.StdEncoding.EncodeToString([]byte(realEndpoint))
 	leakedEnv := map[string]string{
-		"MAD_SINGULAR_PROXY_SAAS": "mad-substrate-proxy://proxy-saas", // the honest sentinel
-		"MAD_SMUGGLED":            encoded,                            // an encoded real endpoint smuggled in
+		"MAD_SINGULAR_PROXY_SAAS": "mad-trellis-proxy://proxy-saas", // the honest sentinel
+		"MAD_SMUGGLED":            encoded,                          // an encoded real endpoint smuggled in
 	}
-	if reason := assertNonRoutableEnv(leakedEnv, "mad-substrate-proxy://"); reason == "" {
+	if reason := assertNonRoutableEnv(leakedEnv, "mad-trellis-proxy://"); reason == "" {
 		return fmt.Errorf("CONTROL VACUOUS: the leak detector PASSED a synthetic env with a base64-encoded routable endpoint (%q) — it cannot catch an encoded leak, so the proxy-bypass verdict proves nothing", encoded)
 	}
 	// And a clean sentinel-only env must NOT be flagged (the detector is not flagging
 	// everything).
-	cleanEnv := map[string]string{"MAD_SINGULAR_PROXY_SAAS": "mad-substrate-proxy://proxy-saas"}
-	if reason := assertNonRoutableEnv(cleanEnv, "mad-substrate-proxy://"); reason != "" {
+	cleanEnv := map[string]string{"MAD_SINGULAR_PROXY_SAAS": "mad-trellis-proxy://proxy-saas"}
+	if reason := assertNonRoutableEnv(cleanEnv, "mad-trellis-proxy://"); reason != "" {
 		return fmt.Errorf("CONTROL VACUOUS: the leak detector FLAGGED a clean sentinel-only env (%s) — it flags everything, so its leak verdict means nothing", reason)
 	}
 	// Belt and suspenders: the live gate must ALSO be able to route a real endpoint

@@ -92,7 +92,7 @@ func (f *fix) newIntegrator(lg LeaseGate) *Integrator {
 		TrunkBranch: f.branch,
 		StorePath:   filepath.Join(t.TempDir(), "i.db"),
 		Leases:      lg,
-		TrunkKey:    []byte("mad-substrate:trunk:v1"),
+		TrunkKey:    []byte("mad-trellis:trunk:v1"),
 	})
 	if err != nil {
 		t.Fatalf("new integrator: %v", err)
@@ -255,7 +255,7 @@ func TestSingleIntegratorExclusion(t *testing.T) {
 	f := newFix(t)
 	rl := newRealLeaseGate(t)
 	it := f.newIntegrator(rl)
-	key := []byte("mad-substrate:trunk:v1")
+	key := []byte("mad-trellis:trunk:v1")
 
 	// Hold the trunk lease under a DIFFERENT session, as a rival integrator would.
 	granted, _, err := rl.Acquire(key, "rival", 60*time.Second)
@@ -477,7 +477,7 @@ func TestIntegratorDoesNotImportLiveness(t *testing.T) {
 	if err != nil {
 		t.Skip("go toolchain not on PATH")
 	}
-	out, err := exec.Command(goBin, "list", "-deps", "github.com/madhavhaldia/mad-substrate/internal/integrator").CombinedOutput()
+	out, err := exec.Command(goBin, "list", "-deps", "github.com/madhavhaldia/mad-trellis/internal/integrator").CombinedOutput()
 	if err != nil {
 		t.Fatalf("go list -deps: %v: %s", err, out)
 	}

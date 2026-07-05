@@ -1,6 +1,6 @@
-# mad-substrate vs. the alternatives
+# mad-trellis vs. the alternatives
 
-*An honest competitive comparison. mad-substrate is a **governance substrate for parallel
+*An honest competitive comparison. mad-trellis is a **governance substrate for parallel
 agentic development** — it sits **under** whatever drives your agents and guarantees that no
 agent can corrupt another agent or the trunk. It is **not** an orchestrator, **not** an agent,
 and **not** a container tool. That framing is what most of the comparisons below turn on: the
@@ -17,7 +17,7 @@ against, and the [README quickstart](../README.md#quickstart) shows the actual w
 Three properties below are easy to *claim* and hard to *build*. They are the reason this project
 exists, and they are where every alternative is weakest. Lead with these when deciding:
 
-1. **A falsifiable safety gate (`mad-substrate conform`).** The safety claims are not prose in a
+1. **A falsifiable safety gate (`mad-trellis conform`).** The safety claims are not prose in a
    README — they are an executable, AND-not-OR gate. Every safety clause must pass, and **each
    clause ships with a non-vacuous control that injects the violation and proves the check flips
    red.** A check that stays green without proving it can fail is treated as the cardinal defect.
@@ -48,16 +48,16 @@ invariants and is summarized in the table.
 
 ## The table
 
-| Capability | **mad-substrate** | plain `git worktree` | Dagger `container-use` | devcontainers | agent sandboxes / runners (OpenHands, SWE-agent, a coding-agent's own sandbox) | CI merge-queue (GitHub/GitLab/Mergify) |
+| Capability | **mad-trellis** | plain `git worktree` | Dagger `container-use` | devcontainers | agent sandboxes / runners (OpenHands, SWE-agent, a coding-agent's own sandbox) | CI merge-queue (GitHub/GitLab/Mergify) |
 |---|---|---|---|---|---|---|
 | **Per-agent isolation** (FS, runtime, ports, local state) | Yes — grain dial: worktree (default) or container/structural cap-drop confinement | Filesystem + branch only; shared runtime, ports, local state | Yes — container per environment | Yes — container per dev/agent | Yes — sandbox per agent/session | No (isolation is the runner's job, not the queue's) |
 | **Safe *concurrent* trunk writes** (many agents, one trunk) | Yes — single integrator, lease-gated, validated, one atomic CAS; trunk advances no other way | No — concurrent merges race; you serialize by hand | No — convergence/merge is out of scope | No — out of scope | No — usually one agent → one PR; collisions handled downstream | Yes — *that is its whole job* (serializes PR merges, re-tests) |
 | **Crash recovery / no stuck locks** | Yes — TTL leases, durable ledger, reclaim on holder death; no lock outlives its holder | N/A — no locks to recover; manual cleanup of stale worktrees | Partial — container lifecycle, not a lease ledger | Partial — restart the container; no governance state | Varies — runner may orphan a session; rarely a reclaim guarantee | Queue may stall on a stuck job; human/timeouts unstick it |
-| **Deterministic, *falsifiable* safety** | Yes — `mad-substrate conform`: AND-not-OR, every clause has a control that proves it can go red | No | No — correctness is the user's pipeline | No | No — safety is sandbox policy + prompt, not a self-test | Partial — "did tests pass" is checkable, but no adversarial proof of the *queue's own* safety |
+| **Deterministic, *falsifiable* safety** | Yes — `mad-trellis conform`: AND-not-OR, every clause has a control that proves it can go red | No | No — correctness is the user's pipeline | No | No — safety is sandbox policy + prompt, not a self-test | Partial — "did tests pass" is checkable, but no adversarial proof of the *queue's own* safety |
 | **Agent-agnostic** (Claude / Codex / human, swappable) | Yes — couples to no agent; cooperative layer is advisory and fail-soft | Yes — it's just git | Mostly — tool-driven, but oriented to its own flow | Yes — any tool in the container | No — each is *its own* agent/runner | Yes — agent-agnostic (operates on PRs) |
 | **Not an orchestrator** (takes no goals, dispatches no tasks) | Yes — by design; you drive each session, it only adds a read-only view | Yes | Mixed — environment tooling, leans toward driving | Yes | No — orchestration *is* the product | Yes — it sequences merges, doesn't drive work |
 | **Default-deny on singular side effects** (prod, SaaS, rate-limited APIs) | Yes — first-class singular gate (Inv 8) | No | No | No | Partial — network/secret policy, not a classified gate | No |
-| **Reads project declarations without modifying the project** | Yes — `mad-substrate.json`; coupling is a declaration, never a code change | N/A | Requires its config/wiring | Requires `devcontainer.json` | Requires adopting the runner's harness | Requires queue config + branch protection |
+| **Reads project declarations without modifying the project** | Yes — `mad-trellis.json`; coupling is a declaration, never a code change | N/A | Requires its config/wiring | Requires `devcontainer.json` | Requires adopting the runner's harness | Requires queue config + branch protection |
 | **External infra required** | None (single static cgo-free binary + git) | None | Dagger engine / container runtime | Container runtime | Runner infra / service | CI service + hosted forge |
 
 Scores are about *defaults and design intent*, not "could you bolt this on." Almost anything can
@@ -69,7 +69,7 @@ be scripted into almost anything; the point is what the tool *guarantees* out of
 
 ### …plain `git worktree`?
 For one agent, or a few agents you personally babysit on clearly disjoint files, `git worktree` is
-genuinely enough — and it is zero install, zero concept, already in your toolbelt. mad-substrate's
+genuinely enough — and it is zero install, zero concept, already in your toolbelt. mad-trellis's
 default grain is *built on* worktrees precisely because they are the right primitive. What plain
 worktrees do **not** give you: any coordination of who may write a convergent resource (two agents
 editing the same lockfile or migration chain still race), any gate on trunk advancement (a bad
@@ -81,7 +81,7 @@ silence is fine. As soon as N agents contend for one trunk unattended, the silen
 ### …Dagger `container-use`?
 `container-use` gives each agent a clean, reproducible containerized environment with good
 tooling — strong on the **forkable** axis, and arguably more ergonomic for "spin up an env" than
-mad-substrate's container grain. But it is an *environment* tool, not a *governance* substrate: it
+mad-trellis's container grain. But it is an *environment* tool, not a *governance* substrate: it
 does not own a lease ledger, it is not the sole validated promoter of your trunk, it has no
 crash-reclaim guarantee that "no lock outlives its holder," and it ships no falsifiable safety gate
 that adversarially proves its own isolation can be detected when broken. If your problem is "give
@@ -93,19 +93,19 @@ never wedge anything," that is a different problem and container-use does not cl
 Devcontainers are the mature, ubiquitous standard for *reproducible, isolated development
 environments*, and if your need is "every agent/dev gets the same toolchain in a container," they
 are simpler, better supported, and editor-native — use them. They are also **orthogonal** to
-mad-substrate rather than competing: a devcontainer is one way to realize a forkable boundary.
+mad-trellis rather than competing: a devcontainer is one way to realize a forkable boundary.
 What a `devcontainer.json` will never be is a coordinator. It has no concept of a lease, no single
 integrator, no validated atomic trunk advance, no default-deny gate on singular resources, and no
-self-falsifying safety test. Devcontainers answer "what environment," mad-substrate answers "who
+self-falsifying safety test. Devcontainers answer "what environment," mad-trellis answers "who
 may write what, when, and how does it merge safely" — you can use both.
 
 ### …an agent sandbox/runner (OpenHands, SWE-agent, a coding agent's own sandbox)?
 These are the closest in spirit *and* the most different in kind, so be precise about the overlap.
 They sandbox an agent (forkable isolation — often very good) **and** they orchestrate it: they take
-a goal, plan, dispatch steps, and drive the loop. mad-substrate deliberately does the opposite of
+a goal, plan, dispatch steps, and drive the loop. mad-trellis deliberately does the opposite of
 the second half — it takes **no goals and dispatches no tasks** (Inv 13), and is meant to sit
-*underneath* exactly these tools. So this is not "mad-substrate instead of OpenHands"; it is
-"OpenHands (or SWE-agent, or your agent's native sandbox) *on top of* mad-substrate." What the
+*underneath* exactly these tools. So this is not "mad-trellis instead of OpenHands"; it is
+"OpenHands (or SWE-agent, or your agent's native sandbox) *on top of* mad-trellis." What the
 runners' own sandboxes don't provide: cross-agent trunk convergence (each typically produces one
 PR and lets the forge sort out collisions), a durable lease ledger with crash reclaim spanning
 multiple independent agents, a default-deny singular gate, and a falsifiable safety conformance
@@ -117,27 +117,27 @@ in parallel against one trunk.
 A merge-queue is the strongest alternative on the **one** axis it targets: serializing many PRs
 into a trunk, re-testing each against the latest, and only fast-forwarding green ones. For a team
 of humans (or agents) that already produce PRs and whose only contention is "the trunk," a merge
-queue is mature, hosted, and often *sufficient* — and mad-substrate does not replace your CI
+queue is mature, hosted, and often *sufficient* — and mad-trellis does not replace your CI
 validation; it can call it. The differences are scope and locus. A merge-queue acts at the **PR
 boundary, after the fact, in your forge**; it does nothing about *per-agent isolation while the
 work happens* (no shared-runtime/port/local-state separation), nothing about *singular* side
 effects an agent triggers mid-run, and nothing about an agent that crashes holding contended local
 state. Its "safety" is "tests passed," which is checkable but is not a falsifiable proof of the
-queue's *own* coordination guarantees. mad-substrate governs the **whole lifecycle** — isolate
+queue's *own* coordination guarantees. mad-trellis governs the **whole lifecycle** — isolate
 while working, lease the convergent, gate the singular, then promote through a validated atomic CAS
 — and a merge-queue can live happily as the *validator* the integrator calls. They compose more
 than they compete; if all you contend over is trunk merges, the queue alone may be enough.
 
 ---
 
-## When you do *not* need mad-substrate (said plainly)
+## When you do *not* need mad-trellis (said plainly)
 
 - One agent at a time, or agents on provably disjoint files you watch directly → `git worktree`.
 - You only need clean per-agent environments → devcontainers or `container-use`.
 - You run a single agent through one harness and merge its PRs by hand/CI → that harness + a
   merge-queue.
 
-mad-substrate earns its complexity exactly when **multiple, possibly heterogeneous, possibly
+mad-trellis earns its complexity exactly when **multiple, possibly heterogeneous, possibly
 unattended agents** must converge on **one trunk** and you need a *provable* guarantee — not a
 hope — that none of them can corrupt another or the trunk, and that a crash never wedges the
 system. If that is not your situation, a simpler tool is the right call, and saying so is the

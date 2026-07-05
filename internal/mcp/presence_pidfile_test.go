@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/coopclient"
-	"github.com/madhavhaldia/mad-substrate/internal/runtimecfg"
+	"github.com/madhavhaldia/mad-trellis/internal/coopclient"
+	"github.com/madhavhaldia/mad-trellis/internal/runtimecfg"
 )
 
 // TestPresencePidfileWriteRemove is the NON-VACUOUS check for the pidfile

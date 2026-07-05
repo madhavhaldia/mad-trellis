@@ -116,8 +116,8 @@ func (t *trunkRepo) commitMerge(tree, trunkOID, branchOID, message string, date 
 	ds := date.UTC().Format("2006-01-02T15:04:05Z")
 	cmd := exec.Command("git", append([]string{"-C", t.dir}, args...)...)
 	cmd.Env = append(os.Environ(),
-		"GIT_AUTHOR_NAME=mad-substrate", "GIT_AUTHOR_EMAIL=integrator@mad-substrate",
-		"GIT_COMMITTER_NAME=mad-substrate", "GIT_COMMITTER_EMAIL=integrator@mad-substrate",
+		"GIT_AUTHOR_NAME=mad-trellis", "GIT_AUTHOR_EMAIL=integrator@mad-trellis",
+		"GIT_COMMITTER_NAME=mad-trellis", "GIT_COMMITTER_EMAIL=integrator@mad-trellis",
 		"GIT_AUTHOR_DATE="+ds, "GIT_COMMITTER_DATE="+ds)
 	out, err := cmd.CombinedOutput()
 	if err != nil {

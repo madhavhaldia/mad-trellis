@@ -35,7 +35,7 @@ func TestIsSystemDylib_Darwin(t *testing.T) {
 
 func TestIsCgoFreeLinkage_Darwin(t *testing.T) {
 	// A clean pure-Go darwin binary: subject line + only system libs/frameworks.
-	clean := "/tmp/mad-substrate:\n" +
+	clean := "/tmp/mad-trellis:\n" +
 		"\t/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1.0.0)\n" +
 		"\t/usr/lib/libresolv.9.dylib (compatibility version 1.0.0, current version 1.0.0)\n" +
 		"\t/System/Library/Frameworks/CoreFoundation.framework/Versions/A/CoreFoundation (compatibility version 150.0.0, current version 2420.0.0)\n"
@@ -44,7 +44,7 @@ func TestIsCgoFreeLinkage_Darwin(t *testing.T) {
 	}
 
 	// A bundled libsqlite3 (what a cgo SQLite drags in) MUST be flagged.
-	dirty := "/tmp/mad-substrate:\n" +
+	dirty := "/tmp/mad-trellis:\n" +
 		"\t/usr/lib/libSystem.B.dylib (compatibility version 1.0.0, current version 1.0.0)\n" +
 		"\t/opt/homebrew/opt/sqlite/lib/libsqlite3.0.dylib (compatibility version 9.0.0, current version 9.6.0)\n"
 	ok, off := isCgoFreeLinkage(dirty)

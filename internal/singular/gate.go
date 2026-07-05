@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/manifest"
+	"github.com/madhavhaldia/mad-trellis/internal/manifest"
 )
 
 // GrantMode is the four-outcome grant decision. Deny is the ZERO value, so an
@@ -33,7 +33,7 @@ type GrantMode int
 const (
 	Deny       GrantMode = iota // ground state: no grant / unknown / malformed
 	Mock                        // no real side effect
-	Proxy                       // mad-substrate-mediated interposition (singular analog of the mediated remote)
+	Proxy                       // mad-trellis-mediated interposition (singular analog of the mediated remote)
 	Supervised                  // real endpoint, reachable ONLY while holding the serialized grant
 )
 
@@ -232,7 +232,7 @@ func (g *Gate) ReleaseSupervised(session, resource string) (bool, error) {
 // singular-resource→key mapping for supervised serialization; opaque to the
 // ledger, disjoint from the trunk key namespace).
 func (g *Gate) key(resource string) []byte {
-	return []byte("mad-substrate:singular:v1:" + resource)
+	return []byte("mad-trellis:singular:v1:" + resource)
 }
 
 // normalizeMode maps a declared mode string to a GrantMode; anything unknown,
@@ -254,7 +254,7 @@ func normalizeMode(s string) GrantMode {
 // the env fails closed, and the REAL endpoint string never appears, so it is
 // unreachable from the env-spec alone (proxy-bypass escape-resistance).
 func sentinel(kind, resource string) string {
-	return "mad-substrate-" + kind + "://" + resource
+	return "mad-trellis-" + kind + "://" + resource
 }
 
 func envName(resource string) string {

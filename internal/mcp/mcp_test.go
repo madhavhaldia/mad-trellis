@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/coopclient"
-	"github.com/madhavhaldia/mad-substrate/internal/manifest"
+	"github.com/madhavhaldia/mad-trellis/internal/coopclient"
+	"github.com/madhavhaldia/mad-trellis/internal/manifest"
 )
 
 // transportError is a transport-class *coopclient.Error (Code 0) so the stub can
@@ -294,7 +294,7 @@ func TestToolLocksWithYou(t *testing.T) {
 
 func TestToolLocksRendersPaths(t *testing.T) {
 	// Daemon emits keys base64-encoded; locks decodes then classifies them.
-	pathKey := base64.StdEncoding.EncodeToString([]byte("mad-substrate:convergent:v1:tokens.ts"))
+	pathKey := base64.StdEncoding.EncodeToString([]byte("mad-trellis:convergent:v1:tokens.ts"))
 	trunkKey := base64.StdEncoding.EncodeToString([]byte(manifest.TrunkKey))
 	opaque := base64.StdEncoding.EncodeToString([]byte("some-other-key"))
 	be := &stubBackend{
@@ -572,7 +572,7 @@ func runServeRole(t *testing.T, be backend, role, input string) []string {
 	t.Helper()
 	// Hermetic runtime dir: a granted integrator now writes a presence pidfile
 	// beside the (resolved) ledger. Pin it to a temp dir so the suite never
-	// touches the developer's real ~/.mad-substrate.
+	// touches the developer's real ~/.mad-trellis.
 	t.Setenv("MAD_RUNTIME_DIR", t.TempDir())
 	var out bytes.Buffer
 	cfg := coopclient.Config{LeaseTTL: 2 * time.Second, Session: "sess-1"}
@@ -794,7 +794,7 @@ func TestIntegratorPoolFillsDistinctSlots(t *testing.T) {
 // TestIntegratorPoolDefaultSingleton is the NON-VACUOUS control for the pool:
 // with NO MAD_INTEGRATOR_POOL (N=1) the behavior is byte-identical to the
 // historic singleton — the FIRST integrator serves on the well-known
-// mad-substrate:integrator:v1 key and the SECOND is refused.
+// mad-trellis:integrator:v1 key and the SECOND is refused.
 func TestIntegratorPoolDefaultSingleton(t *testing.T) {
 	// Defensively force unset (empty ⇒ N=1) so ambient env can't perturb the control.
 	t.Setenv("MAD_INTEGRATOR_POOL", "")
@@ -844,7 +844,7 @@ func TestInitializeHandshake(t *testing.T) {
 	if _, ok := resp.Result.Capabilities["tools"]; !ok {
 		t.Fatalf("capabilities.tools missing: %v", resp.Result.Capabilities)
 	}
-	if resp.Result.ServerInfo["name"] != "mad-substrate" || resp.Result.ServerInfo["version"] != "v9" {
+	if resp.Result.ServerInfo["name"] != "mad-trellis" || resp.Result.ServerInfo["version"] != "v9" {
 		t.Fatalf("serverInfo wrong: %v", resp.Result.ServerInfo)
 	}
 	if strings.TrimSpace(resp.Result.Instructions) == "" {
@@ -854,7 +854,7 @@ func TestInitializeHandshake(t *testing.T) {
 		t.Fatalf("instructions should carry standing guidance: %q", resp.Result.Instructions)
 	}
 	// The guidance must NOT steer agents to the removed request_merge tool;
-	// convergence is handled outside the session (`mad-substrate integrate` / lead).
+	// convergence is handled outside the session (`mad-trellis integrate` / lead).
 	if strings.Contains(resp.Result.Instructions, "request_merge") {
 		t.Fatalf("instructions must not reference request_merge: %q", resp.Result.Instructions)
 	}
@@ -865,7 +865,7 @@ func TestInitializeInstructionsRoleCorrect(t *testing.T) {
 	if !strings.Contains(builder, "mad_request_integration") {
 		t.Fatalf("builder guidance must tell builders to request integration: %q", builder)
 	}
-	if !strings.Contains(builder, "[mad-substrate] nudge") || !strings.Contains(builder, "mad_integration_status") {
+	if !strings.Contains(builder, "[mad-trellis] nudge") || !strings.Contains(builder, "mad_integration_status") {
 		t.Fatalf("builder guidance must explain nudge/status feedback loop: %q", builder)
 	}
 	if strings.Contains(builder, "trunk-side reviewer") {
@@ -885,7 +885,7 @@ func TestInitializeInstructionsRoleCorrect(t *testing.T) {
 		"mad_integration_approve",
 		"mad_integration_reject",
 		"MAD_INTEGRATOR_GATE",
-		"[mad-substrate]",
+		"[mad-trellis]",
 	} {
 		if !strings.Contains(integrator, want) {
 			t.Fatalf("integrator guidance missing %q: %q", want, integrator)
@@ -980,7 +980,7 @@ func TestToolsListBuilderTools(t *testing.T) {
 	// The dead-end mad_request_merge tool must no longer be advertised:
 	// in the worktree grain its branch was never published to the separate
 	// trunk.git, so submitting it could only dead-end. Convergence is handled
-	// out-of-session by `mad-substrate integrate` / the lead.
+	// out-of-session by `mad-trellis integrate` / the lead.
 	for _, tool := range resp.Result.Tools {
 		if tool.Name == "mad_request_merge" {
 			t.Fatalf("mad_request_merge must no longer be advertised")
@@ -1057,7 +1057,7 @@ func TestPiggybackAppendsQueuedEventNudge(t *testing.T) {
 		t.Fatalf("expected 1 line, got %v", lines)
 	}
 	text := toolTextFromLine(t, lines[0])
-	want := "No integration requests are pending.\n[mad-substrate] 2 integration request(s) awaiting review — run mad_integration_pending and process them."
+	want := "No integration requests are pending.\n[mad-trellis] 2 integration request(s) awaiting review — run mad_integration_pending and process them."
 	if text != want {
 		t.Fatalf("piggyback text mismatch\ngot:  %q\nwant: %q", text, want)
 	}
@@ -1115,19 +1115,19 @@ func TestRenderIntegrationNudgeTemplatesAreFixed(t *testing.T) {
 		{
 			kind:  "integration.requested",
 			count: 3,
-			want:  "[mad-substrate] 3 integration request(s) awaiting review — run mad_integration_pending and process them.",
+			want:  "[mad-trellis] 3 integration request(s) awaiting review — run mad_integration_pending and process them.",
 		},
 		{
 			kind:   "integration.verdict",
 			branch: "nm/branch",
 			count:  1,
-			want:   "[mad-substrate] your integration request on nm/branch has a verdict — run mad_integration_status.",
+			want:   "[mad-trellis] your integration request on nm/branch has a verdict — run mad_integration_status.",
 		},
 		{
 			kind:   "integration.claimed",
 			branch: "nm/branch",
 			count:  1,
-			want:   "[mad-substrate] your integration request on nm/branch was claimed for review.",
+			want:   "[mad-trellis] your integration request on nm/branch was claimed for review.",
 		},
 	}
 	for _, tc := range cases {

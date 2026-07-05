@@ -59,18 +59,18 @@ func TestSocketPathPrecedence(t *testing.T) {
 		}
 	})
 
-	t.Run("default falls back to ~/.mad-substrate", func(t *testing.T) {
+	t.Run("default falls back to ~/.mad-trellis", func(t *testing.T) {
 		clearEnv(t)
 		// Use a scratch HOME via UserHomeDir's backing var so we don't MkdirAll
 		// into the real home. On unix UserHomeDir reads $HOME.
 		scratch := t.TempDir()
 		t.Setenv("HOME", scratch)
-		want := filepath.Join(scratch, ".mad-substrate", "daemon.sock")
+		want := filepath.Join(scratch, ".mad-trellis", "daemon.sock")
 		if got := SocketPath(""); got != want {
 			t.Fatalf("default want %q got %q", want, got)
 		}
 		// The default branch MkdirAlls the runtime dir.
-		if fi, err := os.Stat(filepath.Join(scratch, ".mad-substrate")); err != nil || !fi.IsDir() {
+		if fi, err := os.Stat(filepath.Join(scratch, ".mad-trellis")); err != nil || !fi.IsDir() {
 			t.Fatalf("default branch must ensure runtime dir exists: %v", err)
 		}
 	})
@@ -84,7 +84,7 @@ func TestEmptyAndWhitespaceEnvIgnored(t *testing.T) {
 	t.Setenv("MAD_SOCKET", "   ")
 	t.Setenv("MAD_RUNTIME_DIR", "\t")
 	t.Setenv("MAD_HOME", " ")
-	want := filepath.Join(scratch, ".mad-substrate", "daemon.sock")
+	want := filepath.Join(scratch, ".mad-trellis", "daemon.sock")
 	if got := SocketPath(""); got != want {
 		t.Fatalf("whitespace env should be ignored, want %q got %q", want, got)
 	}
@@ -133,7 +133,7 @@ func TestSocketSource(t *testing.T) {
 		if source != SourceDefault {
 			t.Fatalf("want default source, got %q", source)
 		}
-		if path != filepath.Join(scratch, ".mad-substrate", "daemon.sock") {
+		if path != filepath.Join(scratch, ".mad-trellis", "daemon.sock") {
 			t.Fatalf("unexpected default path %q", path)
 		}
 	})
@@ -145,7 +145,7 @@ func TestSocketSourceNoSideEffect(t *testing.T) {
 	scratch := t.TempDir()
 	t.Setenv("HOME", scratch)
 	_, _ = SocketSource("")
-	if _, err := os.Stat(filepath.Join(scratch, ".mad-substrate")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(scratch, ".mad-trellis")); !os.IsNotExist(err) {
 		t.Fatalf("SocketSource must not create the runtime dir, stat err=%v", err)
 	}
 }
@@ -215,20 +215,20 @@ func TestDivergence(t *testing.T) {
 // MAD_SOCKET), is deterministic for a given key, and is DISTINCT per pool slot.
 func TestIntegratorPidfile(t *testing.T) {
 	socket := "/tmp/rt/daemon.sock"
-	singleton := IntegratorPidfile(socket, []byte("mad-substrate:integrator:v1"))
+	singleton := IntegratorPidfile(socket, []byte("mad-trellis:integrator:v1"))
 	if got, want := filepath.Dir(singleton), filepath.Dir(socket); got != want {
 		t.Fatalf("pidfile dir %q, want %q (must share the socket/ledger dir)", got, want)
 	}
-	if got := filepath.Base(singleton); got != "presence-mad-substrate-integrator-v1.pid" {
+	if got := filepath.Base(singleton); got != "presence-mad-trellis-integrator-v1.pid" {
 		t.Fatalf("singleton pidfile name %q unexpected", got)
 	}
 	// Deterministic.
-	if again := IntegratorPidfile(socket, []byte("mad-substrate:integrator:v1")); again != singleton {
+	if again := IntegratorPidfile(socket, []byte("mad-trellis:integrator:v1")); again != singleton {
 		t.Fatalf("not deterministic: %q vs %q", again, singleton)
 	}
 	// Distinct pool slots must not collide.
-	s0 := IntegratorPidfile(socket, []byte("mad-substrate:integrator:v1:slot-0"))
-	s1 := IntegratorPidfile(socket, []byte("mad-substrate:integrator:v1:slot-1"))
+	s0 := IntegratorPidfile(socket, []byte("mad-trellis:integrator:v1:slot-0"))
+	s1 := IntegratorPidfile(socket, []byte("mad-trellis:integrator:v1:slot-1"))
 	if s0 == s1 || s0 == singleton {
 		t.Fatalf("pool slot pidfiles must be distinct: singleton=%q s0=%q s1=%q", singleton, s0, s1)
 	}

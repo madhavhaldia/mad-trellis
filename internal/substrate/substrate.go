@@ -28,7 +28,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/madhavhaldia/mad-substrate/internal/manifest"
+	"github.com/madhavhaldia/mad-trellis/internal/manifest"
 )
 
 // Substrate constructs and tracks per-agent forkable boundaries. It is hosted in

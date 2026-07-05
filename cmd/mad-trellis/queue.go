@@ -5,8 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/madhavhaldia/mad-substrate/internal/rpcclient"
-	"github.com/madhavhaldia/mad-substrate/internal/runtimecfg"
+	"github.com/madhavhaldia/mad-trellis/internal/rpcclient"
+	"github.com/madhavhaldia/mad-trellis/internal/runtimecfg"
 )
 
 // queueCmd is the read-only window onto same-path contention (Wing 4, R8): it
@@ -33,7 +33,7 @@ func queueCmd() *cobra.Command {
 			socket = runtimecfg.SocketPath(socket)
 			cl, err := rpcclient.Dial(socket)
 			if err != nil {
-				return fmt.Errorf("daemon not reachable (%w) — start `mad-substrate daemon`", err)
+				return fmt.Errorf("daemon not reachable (%w) — start `mad-trellis daemon`", err)
 			}
 			defer cl.Close()
 

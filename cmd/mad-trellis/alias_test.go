@@ -75,7 +75,7 @@ func TestAliasIsIdempotent(t *testing.T) {
 // must be refused as an alias name; likewise the binary's own name.
 func TestAliasRejectsShimNames(t *testing.T) {
 	dir := t.TempDir()
-	for _, name := range []string{"claude", "codex", "mad-substrate"} {
+	for _, name := range []string{"claude", "codex", "mad-trellis"} {
 		out, err := runAlias(t, name, "--dir", dir)
 		if err == nil {
 			t.Fatalf("alias %q should be rejected, got success: %s", name, out)

@@ -13,7 +13,7 @@ import (
 // A bare Scratch is enough — daemonEnv()/env() only read the process environment
 // and the scratch dirs; no daemon is booted here. The ACTUAL kill-the-parent exit
 // is covered by the daemon's watchdog goroutine plus the exitWithParent env-gate
-// unit test (cmd/mad-substrate); we deliberately avoid a fork-and-kill test here to
+// unit test (cmd/mad-trellis); we deliberately avoid a fork-and-kill test here to
 // keep the suite non-flaky.
 func TestDaemonEnvOptsInToParentDeath(t *testing.T) {
 	s := &Scratch{}
@@ -39,7 +39,7 @@ func TestDaemonEnvOptsInToParentDeath(t *testing.T) {
 	}
 }
 
-// redact keeps only the mad-substrate-relevant keys so a failure message is readable
+// redact keeps only the mad-trellis-relevant keys so a failure message is readable
 // (the inherited os.Environ() is large and noisy).
 func redact(env []string) []string {
 	var out []string

@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/protocol"
+	"github.com/madhavhaldia/mad-trellis/internal/protocol"
 )
 
 // tmpSockPath returns a short, unused Unix socket path that is cleaned up.

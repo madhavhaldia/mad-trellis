@@ -14,7 +14,7 @@ import (
 //   - symlinks whose resolved target leaves base.
 //
 // SCOPE — read this honestly. At the worktree GRAIN, Contain hardens the paths
-// the substrate itself DERIVES; it is the guarantee that mad-substrate never HANDS
+// the substrate itself DERIVES; it is the guarantee that mad-trellis never HANDS
 // an agent a path that escapes its boundary. It does NOT sandbox an agent that
 // runs arbitrary shell to `cd /` and write elsewhere — a plain directory cannot
 // structurally confine a process. Two seams carry the rest, by construction, not
@@ -34,7 +34,7 @@ import (
 //     mount and `integrate --from`/harvest brings the branch back — see
 //     container.go). The COOPERATIVE adapter reaching the daemon socket from inside
 //     the container is now SHIPPED via a token-authed exec-stdio relay
-//     (cmd/mad-substrate-relay + internal/launcher/coop.go) — Apple `container` has no
+//     (cmd/mad-trellis-relay + internal/launcher/coop.go) — Apple `container` has no
 //     general host→container unix-socket forward, so the launcher tunnels the daemon
 //     socket over a second `container exec`'s stdio. The relay ships EMBEDDED
 //     (internal/coopembed) and auto-resolves, so the cooperative plane is ON BY

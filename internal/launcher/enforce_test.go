@@ -23,7 +23,7 @@ func (c *inspectConn) Call(method string, _ any, out any) error {
 }
 func (c *inspectConn) Close() error { return nil }
 
-var trunkKey = []byte("mad-substrate:trunk:v1")
+var trunkKey = []byte("mad-trellis:trunk:v1")
 
 // EnforceLeaseHeld is the mechanical boundary (Inv 4): the ONLY path to "allowed"
 // is an explicit, current, same-session hold. Everything else — including every

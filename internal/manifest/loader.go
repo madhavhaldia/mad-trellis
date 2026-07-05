@@ -13,7 +13,7 @@ import (
 // stdlib-only v1 dependency set (docs/0002 forbids a TOML lib in v1); the
 // format is emergent behind this loader and may swap later without touching
 // consumers (the Classifier interface is the stable contract, not the schema).
-const ManifestFile = "mad-substrate.json"
+const ManifestFile = "mad-trellis.json"
 
 // SupportedVersion is the manifest schema version this build understands.
 const SupportedVersion = 1

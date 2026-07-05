@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/substrate"
+	"github.com/madhavhaldia/mad-trellis/internal/substrate"
 )
 
 // fakeConn is a scripted daemon connection: it lets the launcher tests drive the
@@ -73,7 +73,7 @@ func (f *fakeConn) Call(method string, params any, out any) error {
 			tok = "TEST-MINTED-TOKEN"
 		}
 		if lk == "" {
-			lk = base64.StdEncoding.EncodeToString([]byte("mad-substrate:session:v1:" + f.whoami))
+			lk = base64.StdEncoding.EncodeToString([]byte("mad-trellis:session:v1:" + f.whoami))
 		}
 		return assign(out, map[string]any{"token": tok, "liveness_key": lk})
 	case "substrate.teardown":
@@ -305,7 +305,7 @@ func TestRunLaunchesOnlyWhenGoverned(t *testing.T) {
 // boundary down, idempotently, with zero orphans.
 
 func TestCleanExitTeardownReleasesOwnLeasesAndBoundary(t *testing.T) {
-	mineKey := base64.StdEncoding.EncodeToString([]byte("mad-substrate:trunk:v1"))
+	mineKey := base64.StdEncoding.EncodeToString([]byte("mad-trellis:trunk:v1"))
 	othersKey := base64.StdEncoding.EncodeToString([]byte("someone-elses-lock"))
 	conn := &fakeConn{
 		whoami:    "s-1-abc",
@@ -363,7 +363,7 @@ func TestCleanExitTeardownRunsEvenWhenAgentFails(t *testing.T) {
 // the agent env (alongside MAD_SESSION) so the cooperative adapter can
 // session.attach the SHARED identity.
 func TestRunMintsAcquiresAndExportsSessionToken(t *testing.T) {
-	wantKey := base64.StdEncoding.EncodeToString([]byte("mad-substrate:session:v1:s-1-abc"))
+	wantKey := base64.StdEncoding.EncodeToString([]byte("mad-trellis:session:v1:s-1-abc"))
 	conn := &fakeConn{whoami: "s-1-abc", provision: okSpec(), token: "TOK-XYZ", livenessKey: wantKey}
 	dial := func(string) (Conn, error) { return conn, nil }
 	sp := &recordingSpawn{code: 0}
@@ -451,7 +451,7 @@ func TestRunFailsClosedAfterProvisionStillTearsDownBoundary(t *testing.T) {
 // loop has fired at least once, then release it; the deferred clean-exit must
 // stop the loop and release the lease.
 func TestRunRenewsSessionLeaseAndStopsOnExit(t *testing.T) {
-	livenessKey := base64.StdEncoding.EncodeToString([]byte("mad-substrate:session:v1:s-1-abc"))
+	livenessKey := base64.StdEncoding.EncodeToString([]byte("mad-trellis:session:v1:s-1-abc"))
 	conn := &fakeConn{whoami: "s-1-abc", provision: okSpec(), livenessKey: livenessKey}
 	dial := func(string) (Conn, error) { return conn, nil }
 
@@ -510,9 +510,9 @@ func TestRunRenewsSessionLeaseAndStopsOnExit(t *testing.T) {
 // chafe C11 closure — the adapter's leases were previously orphaned until TTL.
 func TestCleanExitSweepsSharedIdLeaseFromSeparateConnection(t *testing.T) {
 	sharedID := "s-1-abc"
-	livenessKey := base64.StdEncoding.EncodeToString([]byte("mad-substrate:session:v1:" + sharedID))
-	adapterKey := base64.StdEncoding.EncodeToString([]byte("mad-substrate:singular:v1:db")) // taken by the attached adapter
-	otherKey := base64.StdEncoding.EncodeToString([]byte("mad-substrate:singular:v1:other"))
+	livenessKey := base64.StdEncoding.EncodeToString([]byte("mad-trellis:session:v1:" + sharedID))
+	adapterKey := base64.StdEncoding.EncodeToString([]byte("mad-trellis:singular:v1:db")) // taken by the attached adapter
+	otherKey := base64.StdEncoding.EncodeToString([]byte("mad-trellis:singular:v1:other"))
 	conn := &fakeConn{
 		whoami:      sharedID,
 		provision:   okSpec(),

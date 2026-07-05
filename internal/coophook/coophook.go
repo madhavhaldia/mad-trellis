@@ -1,7 +1,7 @@
 // Package coophook is the HOST-side cooperative hook surface — the native Go
 // implementation of the SessionStart standing-guidance hook for Claude Code. The
 // host invokes the hook out-of-process at session start; the hook injects the
-// standing instruction that tells the agent HOW to coordinate via the mad-substrate
+// standing instruction that tells the agent HOW to coordinate via the mad-trellis
 // MCP tools.
 //
 // There is NO per-edit "claim-before-edit" interception here: the cooperative
@@ -50,7 +50,7 @@ func Run(event string, _ io.Reader, out, _ io.Writer) (code int) {
 // mirrors the MCP server's `instructions` field (the two reinforce each other:
 // the server hints WHEN to reach for the tools, this tells the agent HOW to work
 // within the boundary). It is purely informational — never a constraint.
-const sessionStartGuidance = "You are working inside a mad-substrate governed boundary: an isolated git worktree with its own ports and state. Edits to your working tree are private and safe. For SHARED resources that must merge to the trunk (convergent) or real external side effects (singular), coordinate using the mad-substrate MCP tools: mad_classify (does this path need coordination?), mad_claim (take it so other agents see it as held). Forkable paths need no claim — edit freely. mad_status and mad_locks show current contention. Do NOT merge your own branch: just commit your work on your boundary branch — convergence to the trunk happens outside the session (via `mad-substrate integrate` / the lead). Safety is guaranteed by the substrate regardless; these tools just help you avoid wasted work from conflicting edits."
+const sessionStartGuidance = "You are working inside a mad-trellis governed boundary: an isolated git worktree with its own ports and state. Edits to your working tree are private and safe. For SHARED resources that must merge to the trunk (convergent) or real external side effects (singular), coordinate using the mad-trellis MCP tools: mad_classify (does this path need coordination?), mad_claim (take it so other agents see it as held). Forkable paths need no claim — edit freely. mad_status and mad_locks show current contention. Do NOT merge your own branch: just commit your work on your boundary branch — convergence to the trunk happens outside the session (via `mad-trellis integrate` / the lead). Safety is guaranteed by the substrate regardless; these tools just help you avoid wasted work from conflicting edits."
 
 // runClaudeSessionStart injects the standing guidance into a new Claude Code
 // session. It does NOT read stdin (the SessionStart payload carries nothing we

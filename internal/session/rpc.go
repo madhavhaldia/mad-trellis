@@ -4,8 +4,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 
-	"github.com/madhavhaldia/mad-substrate/internal/daemon"
-	"github.com/madhavhaldia/mad-substrate/internal/protocol"
+	"github.com/madhavhaldia/mad-trellis/internal/daemon"
+	"github.com/madhavhaldia/mad-trellis/internal/protocol"
 )
 
 // RegisterMethods wires the two session-unifier methods onto the daemon registry.

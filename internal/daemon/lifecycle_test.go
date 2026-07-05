@@ -2,7 +2,7 @@ package daemon
 
 // Lifecycle hardening tests (chafe C14): the FLOCK is the single-instance truth
 // and the PIDFILE is the authoritative pid. Hermetic — scratch sockets in /tmp,
-// no real daemon / ~/.mad-substrate touched.
+// no real daemon / ~/.mad-trellis touched.
 
 import (
 	"os"

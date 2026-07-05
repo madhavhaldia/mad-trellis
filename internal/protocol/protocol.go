@@ -1,4 +1,4 @@
-// Package protocol defines the FROZEN mad-substrate daemon wire contract: JSON-RPC
+// Package protocol defines the FROZEN mad-trellis daemon wire contract: JSON-RPC
 // 2.0 envelopes over a Unix socket, a stable error taxonomy, and an explicit
 // contract version on every envelope. This is the load-bearing interface every
 // other project codes against (docs/0003 project 1 "daemon-arbiter-protocol";
@@ -14,7 +14,7 @@ import (
 	"fmt"
 )
 
-// ContractVersion is the mad-substrate daemon contract version, carried on every
+// ContractVersion is the mad-trellis daemon contract version, carried on every
 // envelope as the "v" field (distinct from the JSON-RPC "jsonrpc" field).
 // Bumping it is a breaking change to the frozen contract and requires re-review.
 const ContractVersion = 1

@@ -1,7 +1,7 @@
 //go:build !coopembed
 
 // Package coopembed optionally carries the static linux cooperative-plane payloads
-// — the in-container relay (cmd/mad-substrate-relay) and the linux mad-substrate binary —
+// — the in-container relay (cmd/mad-trellis-relay) and the linux mad-trellis binary —
 // EMBEDDED into the shipped darwin binary, so the container-grain cooperative plane
 // is ON BY DEFAULT with no host asset to point at (Inv 10; #2).
 //
@@ -26,6 +26,6 @@ func Available() bool { return false }
 // (nil, false) when absent. Always (nil, false) in the stub build.
 func RelayBytes(goarch string) ([]byte, bool) { return nil, false }
 
-// MadSubstrateBytes returns the embedded static linux mad-substrate binary for goarch, or
+// MadTrellisBytes returns the embedded static linux mad-trellis binary for goarch, or
 // (nil, false) when absent. Always (nil, false) in the stub build.
-func MadSubstrateBytes(goarch string) ([]byte, bool) { return nil, false }
+func MadTrellisBytes(goarch string) ([]byte, bool) { return nil, false }

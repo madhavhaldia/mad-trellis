@@ -8,14 +8,14 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/madhavhaldia/mad-substrate/internal/substrate"
-	"github.com/madhavhaldia/mad-substrate/internal/worktree"
+	"github.com/madhavhaldia/mad-trellis/internal/substrate"
+	"github.com/madhavhaldia/mad-trellis/internal/worktree"
 )
 
 // despawnCmd removes an abandoned `spawn` boundary's on-disk artifacts: the git
 // worktree (worktree grain) or the self-contained clone (container grain), the
 // nm/<slug> branch, and the per-agent state dir. `spawn` is the fire-and-forget
-// bootstrap (chafe C6) — `mad-substrate launch` is the auto-cleaned path — so a
+// bootstrap (chafe C6) — `mad-trellis launch` is the auto-cleaned path — so a
 // boundary you spawned and decided NOT to integrate needs a manual cleanup.
 //
 // PURELY CLIENT-SIDE: it conducts git + filesystem only, adds NO daemon RPC (the
@@ -34,7 +34,7 @@ func despawnCmd() *cobra.Command {
 			"(or decided not to integrate): the worktree or container clone, the nm/<slug> branch, and " +
 			"the per-agent state dir. It is client-side git/fs only (no daemon RPC) and refuses to discard " +
 			"uncommitted or unintegrated work unless --force. Accepts the spawn branch (nm/<slug>) or the " +
-			"bare <slug>. Run it from the governed repo. (The transparent `mad-substrate launch` cleans up on " +
+			"bare <slug>. Run it from the governed repo. (The transparent `mad-trellis launch` cleans up on " +
 			"its own; despawn is for the fire-and-forget `spawn` bootstrap.)",
 		Args:         cobra.ExactArgs(1),
 		SilenceUsage: true,
@@ -86,7 +86,7 @@ func despawnCmd() *cobra.Command {
 					}
 				}
 				if haveWork && !commitIntegrated(repo, workTip) {
-					return fmt.Errorf("branch %s has commits not integrated into the current trunk — `mad-substrate integrate %s` first, or re-run with --force to discard", branch, branch)
+					return fmt.Errorf("branch %s has commits not integrated into the current trunk — `mad-trellis integrate %s` first, or re-run with --force to discard", branch, branch)
 				}
 			}
 
@@ -127,7 +127,7 @@ func despawnCmd() *cobra.Command {
 				if _, derr := runGit(repo, "branch", delFlag, branch); derr == nil {
 					removed = append(removed, "branch "+branch)
 				} else if !force {
-					return fmt.Errorf("git refused to delete branch %s (likely unmerged) — `mad-substrate integrate %s` first, or re-run with --force: %v", branch, branch, derr)
+					return fmt.Errorf("git refused to delete branch %s (likely unmerged) — `mad-trellis integrate %s` first, or re-run with --force: %v", branch, branch, derr)
 				}
 			}
 			// (3) the per-agent state dir.
@@ -176,7 +176,7 @@ func (e *lockedWorktreeError) Error() string {
 }
 
 // removeLinkedWorktree removes the linked worktree at path, accounting for a FOREIGN
-// lock (Inv 3: no mad-substrate lock outlives its holder — but a foreign tool's lock is
+// lock (Inv 3: no mad-trellis lock outlives its holder — but a foreign tool's lock is
 // not ours to break by default).
 //
 //   - If the worktree is NOT locked, it is removed exactly as before (worktree.Remove).

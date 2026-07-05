@@ -21,13 +21,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/protocol"
+	"github.com/madhavhaldia/mad-trellis/internal/protocol"
 )
 
 // ErrAlreadyRunning is returned when a LIVE daemon already owns the socket. The
 // single-arbiter guarantee (Inv 5) is enforced at the process level: a second
 // instance refuses rather than taking over.
-var ErrAlreadyRunning = errors.New("mad-substrate daemon already running on socket")
+var ErrAlreadyRunning = errors.New("mad-trellis daemon already running on socket")
 
 // Options configures a Daemon.
 type Options struct {

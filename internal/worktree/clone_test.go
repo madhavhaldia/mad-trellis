@@ -59,7 +59,7 @@ func TestCreateCloneIsSelfContainedAndIntegrable(t *testing.T) {
 		t.Fatalf("clone must have NO remote (origin removed), got %q", remotes)
 	}
 	// (3) A default identity is set so commits succeed with no image git config.
-	if email := runOut(t, wt.Path, "config", "user.email"); email != "mad-substrate-agent@local" {
+	if email := runOut(t, wt.Path, "config", "user.email"); email != "mad-trellis-agent@local" {
 		t.Fatalf("clone must set a default user.email, got %q", email)
 	}
 

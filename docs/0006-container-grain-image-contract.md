@@ -1,7 +1,7 @@
 # 0006 — The container-grain image contract (bring-your-own-image)
 
 > Status: ADOPTED 2026-06-27. The container grain (Inv 10 grain dial, project
-> `isolation-substrate`) runs each agent inside a Linux container. mad-substrate
+> `isolation-substrate`) runs each agent inside a Linux container. mad-trellis
 > deliberately ships **NO container image** — the operator supplies one. This doc is
 > the **contract** that image must satisfy, the full set of env knobs that configure
 > the grain, and how cooperative credential forwarding lands an agent's host login
@@ -11,36 +11,36 @@
 
 ---
 
-## Why mad-substrate ships no image
+## Why mad-trellis ships no image
 
 This is a deliberate, load-bearing decision — not an omission. Four reasons, in
 descending order of force:
 
-1. **The substrate must not own the agent (Inv 13 / Inv 10-decoupling).** mad-substrate is
+1. **The substrate must not own the agent (Inv 13 / Inv 10-decoupling).** mad-trellis is
    a *governance substrate*, not an orchestrator and not an agent distribution.
-   Governance is ambient; the user drives a bare agent session. The moment mad-substrate
+   Governance is ambient; the user drives a bare agent session. The moment mad-trellis
    bakes `codex` or `claude` into an image it ships, it has taken ownership of *which
    agent you run and which version* — it starts to *operate* the agent for you. That is
    exactly the coupling Inv 10 forbids ("couple to no agent/host/orchestrator") and the
    "no goals, no task dispatch" posture of Inv 13. The agent is the user's; the image is
-   the user's; mad-substrate governs whatever they bring.
+   the user's; mad-trellis governs whatever they bring.
 
 2. **Release-cadence coupling.** `@openai/codex` and `@anthropic-ai/claude-code` ship on
-   their own fast, independent cadences (often multiple releases a week). If mad-substrate
-   shipped an image pinning an agent version, every agent release would force a mad-substrate
-   image re-release, and every mad-substrate release would freeze users to a stale agent. The
+   their own fast, independent cadences (often multiple releases a week). If mad-trellis
+   shipped an image pinning an agent version, every agent release would force a mad-trellis
+   image re-release, and every mad-trellis release would freeze users to a stale agent. The
    binary's release cadence and the agent's release cadence are *correctly decoupled* by
    making the image a user artifact. The user upgrades the agent by rebuilding their image
-   (`npm i -g` picks up latest) with zero mad-substrate involvement.
+   (`npm i -g` picks up latest) with zero mad-trellis involvement.
 
-3. **Distribution bloat.** mad-substrate ships as a single static, cgo-free Go binary on the
+3. **Distribution bloat.** mad-trellis ships as a single static, cgo-free Go binary on the
    order of **~8.6 MB**. A usable agent image is a `node:20` base plus a global npm install
    — hundreds of megabytes to over a gigabyte. Bundling (or even *referencing* a pulled)
    image would inflate the distribution by two orders of magnitude and drag in a registry
    dependency, an image-signing story, and a pull-on-first-run surprise. The binary stays
    small and self-contained; the heavy, churning artifact stays outside it.
 
-4. **Supply-chain ownership.** An image mad-substrate publishes is an image mad-substrate is on the
+4. **Supply-chain ownership.** An image mad-trellis publishes is an image mad-trellis is on the
    hook to patch — base-OS CVEs, the Node runtime, the transitively-installed npm tree, the
    agent itself. That is a supply-chain liability the project refuses to assume on the
    user's behalf. A bring-your-own-image model puts provenance, pinning, scanning, and CVE
@@ -158,7 +158,7 @@ When confined, neither mount is added: an untrusted container gets no host secre
 ## See also
 
 - [docs/containerfiles/](./containerfiles/) — reference Containerfiles for codex and claude
-  and the exact local build commands. mad-substrate ships no images; these are recipes you build.
+  and the exact local build commands. mad-trellis ships no images; these are recipes you build.
 - [docs/0003-project-breakdown.md](./0003-project-breakdown.md) — `isolation-substrate` owns
   Inv 1 and Inv 10-grainswap (the grain dial this doc's contract sits under).
 - [GROUNDING.md](../GROUNDING.md) — Inv 10 (decoupling + grain dial) and Inv 13 (governance is

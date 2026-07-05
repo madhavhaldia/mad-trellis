@@ -1,6 +1,6 @@
 // Package coopwiring generates "cooperative-by-default" config for a launched
-// agent so that `mad-substrate launch -- claude` / `-- codex` comes up already wired
-// to the mad-substrate MCP server (and, for Claude, the SessionStart standing-guidance
+// agent so that `mad-trellis launch -- claude` / `-- codex` comes up already wired
+// to the mad-trellis MCP server (and, for Claude, the SessionStart standing-guidance
 // hook) with NO manual setup. It writes the host's config files into the agent's
 // DISPOSABLE per-agent git worktree (the "boundary") and returns argv flags the
 // launcher should inject.
@@ -13,7 +13,7 @@
 //
 // WHY config-on-disk in the boundary worktree (honor this design):
 //   - The agent's MCP server and the Claude SessionStart hook are served by the
-//     SAME mad-substrate binary via the `mad-substrate mcp` and `mad-substrate hook <event>`
+//     SAME mad-trellis binary via the `mad-trellis mcp` and `mad-trellis hook <event>`
 //     subcommands. We only ever REFERENCE those subcommand names + the binary path
 //     as strings here; this package imports neither internal/mcp, internal/coophook,
 //     nor internal/coopclient — it is purely a config writer.
@@ -64,10 +64,10 @@ type Result struct {
 	Excluded []string
 }
 
-// BinaryPath returns the absolute, symlink-resolved path to the running mad-substrate
+// BinaryPath returns the absolute, symlink-resolved path to the running mad-trellis
 // binary (os.Executable then filepath.EvalSymlinks). When launched via the agent
 // shim (argv0 is a "claude"/"codex" symlink), this must STILL resolve to the real
-// mad-substrate binary that carries the mcp/hook subcommands — EvalSymlinks does that
+// mad-trellis binary that carries the mcp/hook subcommands — EvalSymlinks does that
 // because os.Executable returns the actual executable image, not argv0.
 func BinaryPath() (string, error) {
 	exe, err := os.Executable()
@@ -88,7 +88,7 @@ func BinaryPath() (string, error) {
 }
 
 // Wire writes cooperative config for host ("claude" | "codex") into the boundary
-// worktree at worktreeDir, referencing binPath (the absolute mad-substrate path), and
+// worktree at worktreeDir, referencing binPath (the absolute mad-trellis path), and
 // returns argv flags to inject. An unknown host yields a zero Result and nil
 // error. It is best-effort but returns the FIRST hard error for the caller to log
 // (the caller treats wiring as fail-soft and still launches the agent on error).
@@ -97,10 +97,10 @@ func Wire(host, worktreeDir, binPath string) (Result, error) {
 }
 
 // defaultMCPArgs are the cooperative MCP server's subcommand args — plain
-// `mad-substrate mcp` (the builder/cooperative role).
+// `mad-trellis mcp` (the builder/cooperative role).
 func defaultMCPArgs() []string { return []string{"mcp"} }
 
-// integratorMCPArgs point the SAME on-disk config shape at `mad-substrate mcp
+// integratorMCPArgs point the SAME on-disk config shape at `mad-trellis mcp
 // --role integrator` (FROZEN CONTRACT): a sibling unit adds the `--role` flag
 // and the integrator MCP server serves the integration toolset + acquires the
 // singleton presence lease. coopwiring only references the subcommand+flag as
@@ -124,7 +124,7 @@ func wire(host, worktreeDir, binPath string, mcpArgs []string) (Result, error) {
 }
 
 // WireIntegrator writes the SAME cooperative config shape as Wire into the trunk
-// worktree at dir, EXCEPT the MCP server is invoked as `mad-substrate mcp --role
+// worktree at dir, EXCEPT the MCP server is invoked as `mad-trellis mcp --role
 // integrator`, and it additionally drops a short, git-excluded integrator
 // guidance file the agent can read. Unlike Wire's disposable boundary, dir is
 // the user's actual trunk/feature worktree — so the trunk-pollution guard
@@ -146,12 +146,12 @@ func WireIntegrator(host, dir, binPath string) (Result, error) {
 
 // integratorGuideFile is the worktree-relative path of the standing guidance the
 // integrator agent reads. Git-excluded so it can never be committed to trunk.
-const integratorGuideFile = ".mad-substrate/integrator.md"
+const integratorGuideFile = ".mad-trellis/integrator.md"
 
 // integratorGuide is the role protocol for the integrator agent. It names the
-// integrator MCP tools (served by `mad-substrate mcp --role integrator`, the
+// integrator MCP tools (served by `mad-trellis mcp --role integrator`, the
 // FROZEN contract) without this package depending on the MCP layer.
-const integratorGuide = `# You are the mad-substrate integrator
+const integratorGuide = `# You are the mad-trellis integrator
 
 Role:
 - You are the trunk-side reviewer for this worktree.
@@ -171,7 +171,7 @@ Review loop:
 6. Re-run ` + "`mad_integration_pending`" + ` before going idle. Drain the queue.
 
 Nudges:
-- Lines like [mad-substrate] N integration request(s) awaiting review — run
+- Lines like [mad-trellis] N integration request(s) awaiting review — run
   mad_integration_pending and process them. may appear in the terminal or be
   appended to tool results.
 - Treat a nudge as a wake-up signal. Re-run ` + "`mad_integration_pending`" + `;
@@ -216,7 +216,7 @@ func wireClaude(worktreeDir, binPath string, mcpArgs []string) (Result, error) {
 	if _, err := os.Stat(mcpPath); os.IsNotExist(err) {
 		mcp := map[string]any{
 			"mcpServers": map[string]any{
-				"mad-substrate": map[string]any{
+				"mad-trellis": map[string]any{
 					"command": binPath,
 					"args":    mcpArgs,
 				},
@@ -279,8 +279,8 @@ func wireCodex(_ /*worktreeDir*/ string, binPath string, mcpArgs []string) (Resu
 	// so the inner double-quotes are LITERAL characters that Codex's TOML-override
 	// parser needs to read the value as a string / array.
 	res.ExtraArgs = []string{
-		"-c", `mcp_servers.mad-substrate.command="` + binPath + `"`,
-		"-c", `mcp_servers.mad-substrate.args=` + string(argsLit),
+		"-c", `mcp_servers.mad-trellis.command="` + binPath + `"`,
+		"-c", `mcp_servers.mad-trellis.args=` + string(argsLit),
 	}
 
 	return res, nil

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/madhavhaldia/mad-substrate/internal/runtimecfg"
+	"github.com/madhavhaldia/mad-trellis/internal/runtimecfg"
 )
 
 func resetPerRepo(t *testing.T) {
@@ -109,7 +109,7 @@ func TestApplyPerRepoRuntimeDefault_RespectsOverrides(t *testing.T) {
 	}
 }
 
-// outside any git repo → no-op; the global ~/.mad-substrate default stands.
+// outside any git repo → no-op; the global ~/.mad-trellis default stands.
 func TestApplyPerRepoRuntimeDefault_NotInRepo(t *testing.T) {
 	resetPerRepo(t)
 	dir := mustEval(t, t.TempDir()) // a plain dir, not a git repo

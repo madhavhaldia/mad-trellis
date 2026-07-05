@@ -2,7 +2,7 @@ package main
 
 // CLI lifecycle hardening tests (chafe C12 + C14). Hermetic: every daemon here
 // runs on its OWN scratch socket under a scratch MAD_RUNTIME_DIR and is
-// killed/closed by the test; nothing touches ~/.mad-substrate or a real daemon.
+// killed/closed by the test; nothing touches ~/.mad-trellis or a real daemon.
 
 import (
 	"bytes"
@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/app"
-	"github.com/madhavhaldia/mad-substrate/internal/daemon"
+	"github.com/madhavhaldia/mad-trellis/internal/app"
+	"github.com/madhavhaldia/mad-trellis/internal/daemon"
 )
 
 // scratchSock returns a short /tmp socket path (Unix sun_path is ~104 bytes) with

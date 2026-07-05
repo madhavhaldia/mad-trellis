@@ -1,8 +1,8 @@
-// Package buildinfo is the pure, cgo-free home for mad-substrate's version-pin
+// Package buildinfo is the pure, cgo-free home for mad-trellis's version-pin
 // manifest and the version/doctor reporting logic. It exists so the substantive
 // checks — manifest loading, dotted-version comparison, git floor enforcement,
 // embedded module-version extraction, and the `version` render shape — are unit
-// tested in isolation, while the CLI surfaces (cmd/mad-substrate/version + doctor)
+// tested in isolation, while the CLI surfaces (cmd/mad-trellis/version + doctor)
 // stay thin (dial + print + exit).
 //
 // SINGLE SOURCE OF TRUTH: versions.json pins everything NOT already expressed in
@@ -192,12 +192,12 @@ func ModuleVersions() map[string]string {
 	return out
 }
 
-// Render produces the `mad-substrate version` output. The non-verbose form is EXACTLY
+// Render produces the `mad-trellis version` output. The non-verbose form is EXACTLY
 // the historical single line (callers depend on its shape). The verbose form
 // appends the embedded pins and module versions, each on its own indented line.
 func Render(version, commit string, contractVersion int, verbose bool) string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "mad-substrate %s (commit %s, contract v%d)\n", version, commit, contractVersion)
+	fmt.Fprintf(&b, "mad-trellis %s (commit %s, contract v%d)\n", version, commit, contractVersion)
 	if !verbose {
 		return b.String()
 	}

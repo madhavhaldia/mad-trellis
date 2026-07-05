@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/madhavhaldia/mad-substrate/internal/conductor"
-	"github.com/madhavhaldia/mad-substrate/internal/coopclient"
+	"github.com/madhavhaldia/mad-trellis/internal/conductor"
+	"github.com/madhavhaldia/mad-trellis/internal/coopclient"
 )
 
 // ----- helpers -----
@@ -219,7 +219,7 @@ func TestBuilderRequestIntegration(t *testing.T) {
 	be := &stubBackend{
 		reqIntID:    "nm/s-7-mybranch",
 		reqIntState: "pending",
-		leaseViews:  map[string]coopclient.LeaseView{"mad-substrate:integrator:v1": {Held: true}},
+		leaseViews:  map[string]coopclient.LeaseView{"mad-trellis:integrator:v1": {Held: true}},
 	}
 	s := newTestServer(t, be)
 	s.getwd = func() (string, error) { return dir, nil }
@@ -251,7 +251,7 @@ func TestBuilderRequestIntegrationWarnsWhenNoIntegratorRunning(t *testing.T) {
 	be := &stubBackend{
 		reqIntID:    "nm/s-7-mybranch",
 		reqIntState: "pending",
-		leaseViews:  map[string]coopclient.LeaseView{"mad-substrate:integrator:v1": {Held: false}},
+		leaseViews:  map[string]coopclient.LeaseView{"mad-trellis:integrator:v1": {Held: false}},
 	}
 	s := newTestServer(t, be)
 	s.getwd = func() (string, error) { return dir, nil }
@@ -260,11 +260,11 @@ func TestBuilderRequestIntegrationWarnsWhenNoIntegratorRunning(t *testing.T) {
 	if isErr {
 		t.Fatalf("request should not error: %q", text)
 	}
-	want := "note: no integrator is currently running — your request is queued; ask your operator to run 'mad-substrate integrator start'."
+	want := "note: no integrator is currently running — your request is queued; ask your operator to run 'mad-trellis integrator start'."
 	if !strings.Contains(text, want) {
 		t.Fatalf("missing no-integrator advisory:\n%s", text)
 	}
-	if got := be.leaseInspectCalls; len(got) != 1 || got[0] != "mad-substrate:integrator:v1" {
+	if got := be.leaseInspectCalls; len(got) != 1 || got[0] != "mad-trellis:integrator:v1" {
 		t.Fatalf("expected singleton presence inspect, got %v", got)
 	}
 }
@@ -296,8 +296,8 @@ func TestBuilderRequestIntegrationPoolHeldSuppressesAdvisory(t *testing.T) {
 		reqIntID:    "nm/s-7-mybranch",
 		reqIntState: "pending",
 		leaseViews: map[string]coopclient.LeaseView{
-			"mad-substrate:integrator:v1:slot-0": {Held: false},
-			"mad-substrate:integrator:v1:slot-1": {Held: true},
+			"mad-trellis:integrator:v1:slot-0": {Held: false},
+			"mad-trellis:integrator:v1:slot-1": {Held: true},
 		},
 	}
 	s := newTestServer(t, be)
@@ -310,7 +310,7 @@ func TestBuilderRequestIntegrationPoolHeldSuppressesAdvisory(t *testing.T) {
 	if strings.Contains(text, "no integrator is currently running") {
 		t.Fatalf("any held pool slot must suppress advisory, got %q", text)
 	}
-	wantKeys := []string{"mad-substrate:integrator:v1:slot-0", "mad-substrate:integrator:v1:slot-1"}
+	wantKeys := []string{"mad-trellis:integrator:v1:slot-0", "mad-trellis:integrator:v1:slot-1"}
 	if got := be.leaseInspectCalls; len(got) != len(wantKeys) || got[0] != wantKeys[0] || got[1] != wantKeys[1] {
 		t.Fatalf("pool inspect keys mismatch: got %v want %v", got, wantKeys)
 	}
@@ -329,7 +329,7 @@ func TestBuilderRequestIntegrationNonBoundaryBranch(t *testing.T) {
 	if be.reqIntCalls != 0 {
 		t.Fatalf("must not call the daemon for a non-boundary branch")
 	}
-	if !strings.Contains(text, "not a mad-substrate boundary branch") {
+	if !strings.Contains(text, "not a mad-trellis boundary branch") {
 		t.Fatalf("unhelpful error: %q", text)
 	}
 }

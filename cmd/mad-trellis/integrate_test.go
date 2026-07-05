@@ -60,7 +60,7 @@ func TestIntegrateMergeWorktreeGrain(t *testing.T) {
 
 // TestIntegrateMergeWorktreeGrainViaLinkedWorktree: the real worktree-grain
 // convergence path. A boundary branch is created in a LINKED worktree (git
-// worktree add) — exactly how `mad-substrate spawn` runs an agent. Because a linked
+// worktree add) — exactly how `mad-trellis spawn` runs an agent. Because a linked
 // worktree shares the parent repo's `.git`, its branch+commits are already in
 // the shared object store, so `integrateMerge` (from=="") resolves and merges
 // the branch from the MAIN worktree with NO publish step (no push, no separate

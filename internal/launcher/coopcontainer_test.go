@@ -19,85 +19,85 @@ func gitInitRepo(t *testing.T, dir string) {
 	}
 }
 
-// TestStageMadSubstrate stages the embedded linux mad-substrate binary into a scratch dir at
+// TestStageMadTrellis stages the embedded linux mad-trellis binary into a scratch dir at
 // the known in-container name, executable, with byte-identical content, and returns a
 // path UNDER the scratch (which equals the in-container path).
-func TestStageMadSubstrate(t *testing.T) {
-	prev := madSubstrateBytesFn
-	want := []byte("EMBEDDED-LINUX-mad-substrate")
-	madSubstrateBytesFn = func(arch string) ([]byte, bool) {
+func TestStageMadTrellis(t *testing.T) {
+	prev := madTrellisBytesFn
+	want := []byte("EMBEDDED-LINUX-mad-trellis")
+	madTrellisBytesFn = func(arch string) ([]byte, bool) {
 		if arch != "arm64" {
 			return nil, false
 		}
 		return want, true
 	}
-	t.Cleanup(func() { madSubstrateBytesFn = prev })
+	t.Cleanup(func() { madTrellisBytesFn = prev })
 
 	scratch := t.TempDir()
-	path, err := stageMadSubstrate(scratch, "arm64")
+	path, err := stageMadTrellis(scratch, "arm64")
 	if err != nil {
-		t.Fatalf("stageMadSubstrate: %v", err)
+		t.Fatalf("stageMadTrellis: %v", err)
 	}
-	if got := filepath.Join(scratch, madSubstrateStageName); path != got {
+	if got := filepath.Join(scratch, madTrellisStageName); path != got {
 		t.Fatalf("staged path = %q; want %q (under scratch, == in-container path)", path, got)
 	}
 	got, rerr := os.ReadFile(path)
 	if rerr != nil {
-		t.Fatalf("read staged mad-substrate: %v", rerr)
+		t.Fatalf("read staged mad-trellis: %v", rerr)
 	}
 	if string(got) != string(want) {
 		t.Fatalf("staged bytes = %q; want %q", got, want)
 	}
 	fi, serr := os.Stat(path)
 	if serr != nil {
-		t.Fatalf("stat staged mad-substrate: %v", serr)
+		t.Fatalf("stat staged mad-trellis: %v", serr)
 	}
 	if fi.Mode().Perm()&0o111 == 0 {
-		t.Fatalf("staged mad-substrate must be executable, mode=%v", fi.Mode())
+		t.Fatalf("staged mad-trellis must be executable, mode=%v", fi.Mode())
 	}
 }
 
-// TestStageMadSubstrate_NoEmbedFails is the NON-VACUOUS control for staging: with NO
+// TestStageMadTrellis_NoEmbedFails is the NON-VACUOUS control for staging: with NO
 // embedded payload (the untagged stub build), staging errors and writes NOTHING — the
 // fail-soft path the caller logs and proceeds confined-without-MCP on. This proves
-// TestStageMadSubstrate's success is due to the injected payload, not an unconditional write.
-func TestStageMadSubstrate_NoEmbedFails(t *testing.T) {
-	prev := madSubstrateBytesFn
-	madSubstrateBytesFn = func(string) ([]byte, bool) { return nil, false }
-	t.Cleanup(func() { madSubstrateBytesFn = prev })
+// TestStageMadTrellis's success is due to the injected payload, not an unconditional write.
+func TestStageMadTrellis_NoEmbedFails(t *testing.T) {
+	prev := madTrellisBytesFn
+	madTrellisBytesFn = func(string) ([]byte, bool) { return nil, false }
+	t.Cleanup(func() { madTrellisBytesFn = prev })
 
 	scratch := t.TempDir()
-	path, err := stageMadSubstrate(scratch, "arm64")
+	path, err := stageMadTrellis(scratch, "arm64")
 	if err == nil {
-		t.Fatalf("stageMadSubstrate must error when no payload is embedded; got path %q", path)
+		t.Fatalf("stageMadTrellis must error when no payload is embedded; got path %q", path)
 	}
 	if path != "" {
-		t.Fatalf("stageMadSubstrate must return no path on failure; got %q", path)
+		t.Fatalf("stageMadTrellis must return no path on failure; got %q", path)
 	}
 	if entries, _ := os.ReadDir(scratch); len(entries) != 0 {
-		t.Fatalf("stageMadSubstrate must write nothing on failure; scratch has %d entries", len(entries))
+		t.Fatalf("stageMadTrellis must write nothing on failure; scratch has %d entries", len(entries))
 	}
 }
 
-// TestStageMadSubstrate_NoScratchFails proves an empty scratch dir is a hard error (no
+// TestStageMadTrellis_NoScratchFails proves an empty scratch dir is a hard error (no
 // staging surface), distinct from the no-embed control above.
-func TestStageMadSubstrate_NoScratchFails(t *testing.T) {
-	prev := madSubstrateBytesFn
-	madSubstrateBytesFn = func(string) ([]byte, bool) { return []byte("x"), true }
-	t.Cleanup(func() { madSubstrateBytesFn = prev })
-	if _, err := stageMadSubstrate("  ", "arm64"); err == nil {
-		t.Fatal("stageMadSubstrate must error with an empty scratch dir")
+func TestStageMadTrellis_NoScratchFails(t *testing.T) {
+	prev := madTrellisBytesFn
+	madTrellisBytesFn = func(string) ([]byte, bool) { return []byte("x"), true }
+	t.Cleanup(func() { madTrellisBytesFn = prev })
+	if _, err := stageMadTrellis("  ", "arm64"); err == nil {
+		t.Fatal("stageMadTrellis must error with an empty scratch dir")
 	}
 }
 
 // TestWireContainerMCP_Claude proves the in-container wiring writes Claude's .mcp.json
 // INTO the in-container clone (hostWorktree, == /work) with the MCP `command` pointed at
-// the STAGED in-container mad-substrate path (under scratch) + arg "mcp", and git-EXCLUDES
+// the STAGED in-container mad-trellis path (under scratch) + arg "mcp", and git-EXCLUDES
 // it so it can never reach the validated trunk.
 func TestWireContainerMCP_Claude(t *testing.T) {
-	prev := madSubstrateBytesFn
-	madSubstrateBytesFn = func(string) ([]byte, bool) { return []byte("LINUX-NM"), true }
-	t.Cleanup(func() { madSubstrateBytesFn = prev })
+	prev := madTrellisBytesFn
+	madTrellisBytesFn = func(string) ([]byte, bool) { return []byte("LINUX-NM"), true }
+	t.Cleanup(func() { madTrellisBytesFn = prev })
 
 	clone := t.TempDir()
 	gitInitRepo(t, clone)
@@ -108,7 +108,7 @@ func TestWireContainerMCP_Claude(t *testing.T) {
 		t.Fatalf("wireContainerMCP: %v", err)
 	}
 
-	stagedPath := filepath.Join(scratch, madSubstrateStageName)
+	stagedPath := filepath.Join(scratch, madTrellisStageName)
 
 	// .mcp.json lands in the CLONE (mounted at /work), not the scratch.
 	mcpPath := filepath.Join(clone, ".mcp.json")
@@ -121,9 +121,9 @@ func TestWireContainerMCP_Claude(t *testing.T) {
 		t.Fatalf("unmarshal .mcp.json: %v\n%s", uerr, b)
 	}
 	servers, _ := mcp["mcpServers"].(map[string]any)
-	nm, _ := servers["mad-substrate"].(map[string]any)
+	nm, _ := servers["mad-trellis"].(map[string]any)
 	if nm == nil {
-		t.Fatalf(".mcp.json missing mcpServers.mad-substrate: %#v", mcp)
+		t.Fatalf(".mcp.json missing mcpServers.mad-trellis: %#v", mcp)
 	}
 	// CRITICAL: command must be the STAGED IN-CONTAINER path, not a host binary.
 	if got := nm["command"]; got != stagedPath {
@@ -149,11 +149,11 @@ func TestWireContainerMCP_Claude(t *testing.T) {
 }
 
 // TestWireContainerMCP_Codex proves Codex is wired via `-c` ExtraArgs that reference the
-// STAGED in-container mad-substrate path (it writes no on-disk files).
+// STAGED in-container mad-trellis path (it writes no on-disk files).
 func TestWireContainerMCP_Codex(t *testing.T) {
-	prev := madSubstrateBytesFn
-	madSubstrateBytesFn = func(string) ([]byte, bool) { return []byte("LINUX-NM"), true }
-	t.Cleanup(func() { madSubstrateBytesFn = prev })
+	prev := madTrellisBytesFn
+	madTrellisBytesFn = func(string) ([]byte, bool) { return []byte("LINUX-NM"), true }
+	t.Cleanup(func() { madTrellisBytesFn = prev })
 
 	clone := t.TempDir()
 	gitInitRepo(t, clone)
@@ -163,12 +163,12 @@ func TestWireContainerMCP_Codex(t *testing.T) {
 	if err != nil {
 		t.Fatalf("wireContainerMCP codex: %v", err)
 	}
-	stagedPath := filepath.Join(scratch, madSubstrateStageName)
+	stagedPath := filepath.Join(scratch, madTrellisStageName)
 	joined := strings.Join(res.ExtraArgs, " ")
-	if !strings.Contains(joined, `mcp_servers.mad-substrate.command="`+stagedPath+`"`) {
+	if !strings.Contains(joined, `mcp_servers.mad-trellis.command="`+stagedPath+`"`) {
 		t.Fatalf("codex ExtraArgs must point command at the staged in-container path %q; got %#v", stagedPath, res.ExtraArgs)
 	}
-	if !strings.Contains(joined, `mcp_servers.mad-substrate.args=["mcp"]`) {
+	if !strings.Contains(joined, `mcp_servers.mad-trellis.args=["mcp"]`) {
 		t.Fatalf(`codex ExtraArgs must set args=["mcp"]; got %#v`, res.ExtraArgs)
 	}
 	// Codex writes no files into the clone.
@@ -178,14 +178,14 @@ func TestWireContainerMCP_Codex(t *testing.T) {
 }
 
 // TestWireContainerMCP_NoEmbedFailSoft is the NON-VACUOUS control for the wiring path:
-// when no mad-substrate binary is embedded (the untagged build), wireContainerMCP returns an
+// when no mad-trellis binary is embedded (the untagged build), wireContainerMCP returns an
 // error AND writes NO config into the clone — so the launcher's (2e) fails soft (logs,
 // runs the agent confined-uncooperative) rather than wiring a command to a non-existent
 // staged binary. This proves the success tests above depend on the injected payload.
 func TestWireContainerMCP_NoEmbedFailSoft(t *testing.T) {
-	prev := madSubstrateBytesFn
-	madSubstrateBytesFn = func(string) ([]byte, bool) { return nil, false }
-	t.Cleanup(func() { madSubstrateBytesFn = prev })
+	prev := madTrellisBytesFn
+	madTrellisBytesFn = func(string) ([]byte, bool) { return nil, false }
+	t.Cleanup(func() { madTrellisBytesFn = prev })
 
 	clone := t.TempDir()
 	gitInitRepo(t, clone)
@@ -193,7 +193,7 @@ func TestWireContainerMCP_NoEmbedFailSoft(t *testing.T) {
 
 	res, err := wireContainerMCP("claude", clone, scratch, "arm64", nil)
 	if err == nil {
-		t.Fatalf("wireContainerMCP must error when no mad-substrate is embedded; got %#v", res)
+		t.Fatalf("wireContainerMCP must error when no mad-trellis is embedded; got %#v", res)
 	}
 	if _, statErr := os.Stat(filepath.Join(clone, ".mcp.json")); !os.IsNotExist(statErr) {
 		t.Fatalf("no config must be written into the clone when staging fails")
@@ -203,9 +203,9 @@ func TestWireContainerMCP_NoEmbedFailSoft(t *testing.T) {
 // TestWireContainerMCP_NoClone proves an empty hostWorktree (no real clone) is a hard
 // error before any staging — there is nowhere to wire.
 func TestWireContainerMCP_NoClone(t *testing.T) {
-	prev := madSubstrateBytesFn
-	madSubstrateBytesFn = func(string) ([]byte, bool) { return []byte("x"), true }
-	t.Cleanup(func() { madSubstrateBytesFn = prev })
+	prev := madTrellisBytesFn
+	madTrellisBytesFn = func(string) ([]byte, bool) { return []byte("x"), true }
+	t.Cleanup(func() { madTrellisBytesFn = prev })
 	if _, err := wireContainerMCP("claude", "  ", t.TempDir(), "arm64", nil); err == nil {
 		t.Fatal("wireContainerMCP must error with an empty in-container clone path")
 	}

@@ -10,11 +10,11 @@ import (
 // check_liveness.go proves the LIVENESS / FAILURE-RECOVERY clause (docs/0003
 // §10a; Inv 3-reclaim, owned by liveness-recovery): no lock outlives its holder —
 // the system makes progress after a single death. A holder dies mid-lease (its
-// TTL lapses without renewal); the public liveness path (`mad-substrate recover`)
+// TTL lapses without renewal); the public liveness path (`mad-trellis recover`)
 // RECLAIMS the expired lease so a fresh agent can acquire it; the trunk stays
 // clean (a reclaim FREES a resource, it never mutates trunk).
 //
-// BLACK BOX over the public lease RPC + the `mad-substrate recover` CLI + observable
+// BLACK BOX over the public lease RPC + the `mad-trellis recover` CLI + observable
 // state. It keys off the EXPLICIT TTL/lease state, NEVER a sleep-for-luck:
 //
 //   1. A "doomed holder" session acquires the trunk lease with a SHORT TTL and
@@ -24,7 +24,7 @@ import (
 //   2. The harness POLLS lease.inspect until held=false (the lease has lapsed past
 //      its TTL — an EXPLICIT state, bounded by a deadline so a stuck daemon fails
 //      fast rather than hanging).
-//   3. `mad-substrate recover` reports reclaimed>=1 (the expired lease was reclaimed).
+//   3. `mad-trellis recover` reports reclaimed>=1 (the expired lease was reclaimed).
 //   4. A FRESH session can now acquire the (reclaimed) trunk lease — progress was
 //      made after the death.
 //   5. The trunk ref is unchanged by recovery (reclaim frees, never promotes).
@@ -83,7 +83,7 @@ func (c livenessReclaim) Run(s *Scratch) Result {
 		return fail(c, "%v", err)
 	}
 
-	// 3) `mad-substrate recover` reclaims the expired lease.
+	// 3) `mad-trellis recover` reclaims the expired lease.
 	rec := s.CLI("recover")
 	if !rec.OK() {
 		return fail(c, "recover failed: exit %d %s", rec.ExitCode, rec.Out())
@@ -197,7 +197,7 @@ func (c livenessReclaim) waitLeaseLapsed(s *Scratch, key string) error {
 	return fmt.Errorf("lease did not lapse past its %s TTL within the poll deadline", shortTTL)
 }
 
-// recoverReclaimedAtLeastOne parses the `mad-substrate recover` line
+// recoverReclaimedAtLeastOne parses the `mad-trellis recover` line
 // "recovery: reclaimed=N aborted=N torn_down=N dead=[...]" and reports reclaimed>=1.
 func recoverReclaimedAtLeastOne(out string) bool {
 	n, ok := parseRecoverField(out, "reclaimed=")
@@ -259,7 +259,7 @@ func trimLine(out string) string {
 //     (retryable). The integration is parked in `validating`; its holder holds no
 //     live lease (only the rival does).
 //  5. Poll integrate.status until `validating` (EXPLICIT state, no sleep).
-//  6. `mad-substrate recover` reports aborted>=1; integrate.status becomes `aborted`;
+//  6. `mad-trellis recover` reports aborted>=1; integrate.status becomes `aborted`;
 //     TrunkTip is byte-identical to the pre-recover tip (the base — abort never
 //     moves a ref).
 //

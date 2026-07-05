@@ -6,7 +6,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/madhavhaldia/mad-substrate/internal/protocol"
+	"github.com/madhavhaldia/mad-trellis/internal/protocol"
 )
 
 // CallContext carries per-call context to a Handler. Session is the

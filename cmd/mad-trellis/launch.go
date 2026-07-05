@@ -9,11 +9,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/madhavhaldia/mad-substrate/internal/launcher"
-	"github.com/madhavhaldia/mad-substrate/internal/runtimecfg"
+	"github.com/madhavhaldia/mad-trellis/internal/launcher"
+	"github.com/madhavhaldia/mad-trellis/internal/runtimecfg"
 )
 
-// launchCmd is the transparent governed launcher (project 5). `mad-substrate launch
+// launchCmd is the transparent governed launcher (project 5). `mad-trellis launch
 // -- <agent> [args...]` provisions an isolation boundary, then execs the OPAQUE
 // agent into it on a PTY and tears the boundary down on clean exit. It is what a
 // shimmed agent invocation routes through.
@@ -33,7 +33,7 @@ func launchCmd() *cobra.Command {
 		DisableFlagParsing: false,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 0 {
-				return fmt.Errorf("usage: mad-substrate launch -- <agent> [args...]")
+				return fmt.Errorf("usage: mad-trellis launch -- <agent> [args...]")
 			}
 			socket = runtimecfg.SocketPath(socket)
 			// GRAIN DIAL (Inv 10): --grain selects the isolation backend. The flag
@@ -90,10 +90,10 @@ func applyGrainSelection(grain string) error {
 func governedLaunch(agentArg string, passArgs []string, socket string, ports int) {
 	logf := func(string, ...any) {}
 	if os.Getenv("MAD_DEBUG") != "" {
-		logf = func(f string, a ...any) { fmt.Fprintf(os.Stderr, "mad-substrate: "+f+"\n", a...) }
+		logf = func(f string, a ...any) { fmt.Fprintf(os.Stderr, "mad-trellis: "+f+"\n", a...) }
 	}
 
-	// FAIL-FAST: mad-substrate governs a GIT REPOSITORY — every grain provisions a
+	// FAIL-FAST: mad-trellis governs a GIT REPOSITORY — every grain provisions a
 	// git worktree/clone and the trunk is a git ref. If cwd is not inside a repo,
 	// BLOCK here with an actionable message, BEFORE auto-starting a daemon or
 	// offering an integrator terminal — otherwise those side effects fire and the
@@ -102,7 +102,7 @@ func governedLaunch(agentArg string, passArgs []string, socket string, ports int
 	if !cwdInGitRepo() {
 		wd, _ := os.Getwd()
 		fmt.Fprintf(os.Stderr,
-			"mad-substrate: BLOCKED: %s is not a git repository — mad-substrate governs a git repo "+
+			"mad-trellis: BLOCKED: %s is not a git repository — mad-trellis governs a git repo "+
 				"(each agent runs in its own `git worktree`). Run `git init` here, or cd into a repo; "+
 				"refusing to launch %q ungoverned\n", wd, agentArg)
 		os.Exit(launcher.BlockedExitCode)
@@ -119,7 +119,7 @@ func governedLaunch(agentArg string, passArgs []string, socket string, ports int
 		self = "" // ensureDaemon turns an unknown self into a clean BLOCK
 	}
 	if err := ensureDaemon(socket, self, func(f string, a ...any) { fmt.Fprintf(os.Stderr, f+"\n", a...) }); err != nil {
-		fmt.Fprintf(os.Stderr, "mad-substrate: BLOCKED: %v; refusing to launch %q ungoverned\n", err, agentArg)
+		fmt.Fprintf(os.Stderr, "mad-trellis: BLOCKED: %v; refusing to launch %q ungoverned\n", err, agentArg)
 		os.Exit(launcher.BlockedExitCode)
 	}
 
@@ -142,7 +142,7 @@ func governedLaunch(agentArg string, passArgs []string, socket string, ports int
 	})
 	if rerr != nil {
 		// On a BLOCK this carries the reason; on a clean run rerr is nil.
-		fmt.Fprintf(os.Stderr, "mad-substrate: %v\n", rerr)
+		fmt.Fprintf(os.Stderr, "mad-trellis: %v\n", rerr)
 	}
 	os.Exit(code)
 }
@@ -164,10 +164,10 @@ func resolveAgentBinary(agentArg, socket string) (string, error) {
 	}
 	// FAIL-CLOSED: if we cannot identify our own binary, we cannot reliably
 	// exclude the shim from PATH resolution — so BLOCK rather than risk resolving
-	// the agent name back to the shim and re-exec'ing mad-substrate forever.
+	// the agent name back to the shim and re-exec'ing mad-trellis forever.
 	self, err := os.Executable()
 	if err != nil {
-		return "", fmt.Errorf("cannot identify the mad-substrate binary to exclude the shim: %w", err)
+		return "", fmt.Errorf("cannot identify the mad-trellis binary to exclude the shim: %w", err)
 	}
 	shimDir := launcher.DefaultShimDir(filepath.Dir(socket))
 	return launcher.ResolveReal(agentArg, shimDir, self, os.Getenv("PATH"))
@@ -220,7 +220,7 @@ func maybePromptIntegrator(socket, agent string) {
 		dir, _ := os.Getwd()
 		// Default the integrator agent to the SAME agent being launched.
 		if _, serr := startIntegrator(socket, dir, agent, nil, false); serr != nil {
-			fmt.Fprintf(os.Stderr, "mad-substrate: could not start integrator: %v (continuing without one)\n", serr)
+			fmt.Fprintf(os.Stderr, "mad-trellis: could not start integrator: %v (continuing without one)\n", serr)
 		}
 	default:
 		// Empty / EOF / anything but y/yes = no. Builder launches without one.
@@ -283,7 +283,7 @@ func shimInstallCmd() *cobra.Command {
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&dir, "dir", "", "shim directory (default ~/.mad-substrate/shims)")
+	cmd.Flags().StringVar(&dir, "dir", "", "shim directory (default ~/.mad-trellis/shims)")
 	return cmd
 }
 
@@ -312,11 +312,11 @@ func shimStatusCmd() *cobra.Command {
 				fmt.Fprintf(out, "  %-8s installed=%v\n", a, err == nil)
 			}
 			if !onPath {
-				fmt.Fprintf(out, "\nShim not on PATH — governed interception is NOT active. Run `mad-substrate shim install` and add it to PATH.\n")
+				fmt.Fprintf(out, "\nShim not on PATH — governed interception is NOT active. Run `mad-trellis shim install` and add it to PATH.\n")
 			}
 			return nil
 		},
 	}
-	cmd.Flags().StringVar(&dir, "dir", "", "shim directory (default ~/.mad-substrate/shims)")
+	cmd.Flags().StringVar(&dir, "dir", "", "shim directory (default ~/.mad-trellis/shims)")
 	return cmd
 }

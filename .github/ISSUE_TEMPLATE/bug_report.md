@@ -18,22 +18,22 @@ What you expected to happen.
 
 ## Reproduction
 
-Steps to reproduce — ideally the exact `mad-substrate …` commands:
+Steps to reproduce — ideally the exact `mad-trellis …` commands:
 
 ```sh
 ```
 
 ## Environment
 
-- mad-substrate version: <!-- `mad-substrate version` -->
+- mad-trellis version: <!-- `mad-trellis version` -->
 - OS / arch: <!-- e.g. macOS 26 arm64 -->
 - git version: <!-- `git --version` -->
 - grain (if relevant): worktree | container
-- `mad-substrate doctor` output:
+- `mad-trellis doctor` output:
 
 ```
 ```
 
 ## Logs / output
 
-<!-- Relevant daemon output, error messages, or `mad-substrate watch` state. -->
+<!-- Relevant daemon output, error messages, or `mad-trellis watch` state. -->

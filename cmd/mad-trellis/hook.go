@@ -5,16 +5,16 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/madhavhaldia/mad-substrate/internal/coophook"
+	"github.com/madhavhaldia/mad-trellis/internal/coophook"
 )
 
 // hookCmd runs a single cooperative session-guidance hook event for a launched
 // agent's CLI host (Claude Code). It is STATELESS and ADVISORY — the only event
 // it serves, claude-sessionstart, injects standing guidance that tells the agent
-// how to coordinate via the mad-substrate MCP tools; it holds no lease and makes no
+// how to coordinate via the mad-trellis MCP tools; it holds no lease and makes no
 // per-edit decision. FAIL-SOFT (Inv 13): every event exits 0 — so a hook can
 // never make a governed session more fragile than a bare one. The event names are
-// an internal contract with `mad-substrate launch`'s wiring, so the command is hidden
+// an internal contract with `mad-trellis launch`'s wiring, so the command is hidden
 // from the user-facing help.
 func hookCmd() *cobra.Command {
 	return &cobra.Command{

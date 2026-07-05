@@ -38,7 +38,7 @@ func TestRunPTYIONudgeInjectsBranchVerdict(t *testing.T) {
 	if code != 0 {
 		t.Fatalf("exit code = %d, want 0", code)
 	}
-	want := "[mad-substrate] your integration request on feature/nudge has a verdict — run mad_integration_status."
+	want := "[mad-trellis] your integration request on feature/nudge has a verdict — run mad_integration_status."
 	if !strings.Contains(out.String(), want) {
 		t.Fatalf("child input/output missing nudge line:\n got %q\nwant %q", out.String(), want)
 	}
@@ -81,7 +81,7 @@ func TestRunPTYIONudgePolitenessDefersWhileUserInputIsFresh(t *testing.T) {
 	if !strings.Contains(out.String(), "typed by user") {
 		t.Fatalf("child did not receive user input: %q", out.String())
 	}
-	want := "[mad-substrate] your integration request on feature/polite was claimed for review."
+	want := "[mad-trellis] your integration request on feature/polite was claimed for review."
 	if !strings.Contains(out.String(), want) {
 		t.Fatalf("child did not receive deferred nudge:\n got %q\nwant %q", out.String(), want)
 	}

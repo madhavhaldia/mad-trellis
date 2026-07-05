@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/lease"
+	"github.com/madhavhaldia/mad-trellis/internal/lease"
 )
 
 type realLeaseGate struct{ l *lease.Ledger }

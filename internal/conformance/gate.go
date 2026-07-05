@@ -24,7 +24,7 @@ type Report struct {
 }
 
 // CoverageRow maps one check's assertion to its 0003 clause + owning project — the
-// COVERAGE MATRIX printed by `mad-substrate conform`, so the gate is auditable against
+// COVERAGE MATRIX printed by `mad-trellis conform`, so the gate is auditable against
 // the clause map (docs/0003 L20-39) rather than an opaque pass/fail.
 type CoverageRow struct {
 	CheckID      string
@@ -36,7 +36,7 @@ type CoverageRow struct {
 
 // RunGate runs the production gate: every REGISTERED check, nothing disabled. It
 // is a thin wrapper over RunGateWith so production callers never touch a global
-// switch. binaryPath is the mad-substrate binary the checks drive (the conform CLI
+// switch. binaryPath is the mad-trellis binary the checks drive (the conform CLI
 // passes os.Executable(); the tagged test builds one to temp).
 func RunGate(binaryPath string) (Report, error) {
 	return RunGateWith(binaryPath, Checks(), nil)
@@ -113,10 +113,10 @@ func (rep Report) Coverage() []CoverageRow {
 }
 
 // Print writes the coverage matrix, per-check PASS/FAIL with detail, and the final
-// GREEN/RED to w (the format `mad-substrate conform` renders). Deterministic ordering:
+// GREEN/RED to w (the format `mad-trellis conform` renders). Deterministic ordering:
 // registration order (the order safety conjuncts are argued).
 func (rep Report) Print(w io.Writer) {
-	fmt.Fprintln(w, "mad-substrate conformance — safety-property authority (self-hosting-day gate)")
+	fmt.Fprintln(w, "mad-trellis conformance — safety-property authority (self-hosting-day gate)")
 	fmt.Fprintln(w, strings.Repeat("=", 78))
 	fmt.Fprintln(w, "COVERAGE MATRIX (assertion -> 0003 clause / owning project):")
 	for _, row := range rep.Coverage() {

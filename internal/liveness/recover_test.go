@@ -21,7 +21,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/lease"
+	"github.com/madhavhaldia/mad-trellis/internal/lease"
 )
 
 // --- real-ledger adapter + manual clock --------------------------------------
@@ -60,11 +60,11 @@ func (a realReclaimer) ReclaimIfExpired(key []byte) (bool, string, error) {
 	return res.Reclaimed, res.PriorHolder, nil
 }
 
-var trunkKey = []byte("mad-substrate:trunk:v1")
+var trunkKey = []byte("mad-trellis:trunk:v1")
 
 // sessionKeyPrefix mirrors the T2 session-liveness lease key namespace
-// ("mad-substrate:session:v1:"); the per-session key is the prefix + sessionID.
-var sessionKeyPrefix = []byte("mad-substrate:session:v1:")
+// ("mad-trellis:session:v1:"); the per-session key is the prefix + sessionID.
+var sessionKeyPrefix = []byte("mad-trellis:session:v1:")
 
 func sessionKey(id string) []byte { return append(append([]byte{}, sessionKeyPrefix...), id...) }
 
@@ -116,7 +116,7 @@ func TestReclaimExpiredLease(t *testing.T) {
 func TestReclaimedAuditPayloadIncludesLeaseKey(t *testing.T) {
 	clk := &manualClock{t: time.Unix(1_700_000_000, 0)}
 	l := openLedger(t, "", clk)
-	key := []byte("mad-substrate:singular:v1:db")
+	key := []byte("mad-trellis:singular:v1:db")
 	if res, _ := l.Acquire(key, "dead-A", 100*time.Millisecond); !res.Granted {
 		t.Fatal("setup acquire must grant")
 	}
@@ -306,9 +306,9 @@ func TestNoCrossKeyFalsePositiveOnLiveHolder(t *testing.T) {
 	clk := &manualClock{t: time.Unix(1_700_000_000, 0)}
 	l := openLedger(t, "", clk)
 	live := "session-LIVE"
-	l.Acquire(trunkKey, live, time.Hour)                                          // trunk lease: LIVE, renewed
-	l.Acquire([]byte("mad-substrate:singular:v1:db"), live, 100*time.Millisecond) // a grant that lapses
-	clk.advance(250 * time.Millisecond)                                           // ONLY the singular grant expires
+	l.Acquire(trunkKey, live, time.Hour)                                        // trunk lease: LIVE, renewed
+	l.Acquire([]byte("mad-trellis:singular:v1:db"), live, 100*time.Millisecond) // a grant that lapses
+	clk.advance(250 * time.Millisecond)                                         // ONLY the singular grant expires
 
 	integ := &spyIntegrator{inflight: []InFlightIntegration{
 		{ID: "int-LIVE", Holder: live, State: "validating"},
@@ -374,9 +374,9 @@ func TestSessionLivenessHoldsBoundaryAliveDespiteLapsedGrant(t *testing.T) {
 	clk := &manualClock{t: time.Unix(1_700_000_000, 0)}
 	l := openLedger(t, "", clk)
 	live := "s-10-live"
-	l.Acquire(sessionKey(live), live, time.Hour)                                  // session-liveness lease: LIVE, renewed
-	l.Acquire([]byte("mad-substrate:singular:v1:db"), live, 100*time.Millisecond) // a supervised grant that lapses
-	clk.advance(250 * time.Millisecond)                                           // ONLY the singular grant expires
+	l.Acquire(sessionKey(live), live, time.Hour)                                // session-liveness lease: LIVE, renewed
+	l.Acquire([]byte("mad-trellis:singular:v1:db"), live, 100*time.Millisecond) // a supervised grant that lapses
+	clk.advance(250 * time.Millisecond)                                         // ONLY the singular grant expires
 
 	bound := &spyBoundary{}
 	r, _ := NewWithSessionKey(realReclaimer{l}, nil, bound, trunkKey, sessionKeyPrefix, nil)
@@ -652,7 +652,7 @@ func TestLivenessNeverSpawns(t *testing.T) {
 	if err != nil {
 		t.Skip("go toolchain not on PATH")
 	}
-	out, err := exec.Command(goBin, "list", "-deps", "github.com/madhavhaldia/mad-substrate/internal/liveness").CombinedOutput()
+	out, err := exec.Command(goBin, "list", "-deps", "github.com/madhavhaldia/mad-trellis/internal/liveness").CombinedOutput()
 	if err != nil {
 		t.Fatalf("go list -deps: %v: %s", err, out)
 	}

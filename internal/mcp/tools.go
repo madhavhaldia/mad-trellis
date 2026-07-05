@@ -9,9 +9,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/madhavhaldia/mad-substrate/internal/conductor"
-	"github.com/madhavhaldia/mad-substrate/internal/coopclient"
-	"github.com/madhavhaldia/mad-substrate/internal/manifest"
+	"github.com/madhavhaldia/mad-trellis/internal/conductor"
+	"github.com/madhavhaldia/mad-trellis/internal/coopclient"
+	"github.com/madhavhaldia/mad-trellis/internal/manifest"
 )
 
 // integratorGateEnv is the OPT-IN gate-on-approve knob (R12): a shell command run
@@ -26,18 +26,18 @@ const defaultProtocolVersion = "2024-11-05"
 // standingGuidance is the initialize "instructions" string: the model-facing
 // explanation of the governed boundary and when to reach for these tools. It is
 // the single most important piece of agent steering this server emits.
-const standingGuidance = "You are running inside a mad-substrate governed boundary: an isolated git worktree with its own ports and state. Edits to your working tree are private and safe. Before editing a SHARED/convergent resource (one that must merge to the trunk), coordinate with these tools: mad_classify tells you whether a path needs coordination; mad_claim takes it so other agents see it as held. Forkable paths need no claim — edit freely. mad_status and mad_locks show current contention. You do NOT merge your own branch: just commit your work on your boundary branch — convergence to the trunk is handled outside the session (by `mad-substrate integrate` / the lead). The substrate guarantees safety regardless; these tools just help you avoid wasted work from conflicting edits."
+const standingGuidance = "You are running inside a mad-trellis governed boundary: an isolated git worktree with its own ports and state. Edits to your working tree are private and safe. Before editing a SHARED/convergent resource (one that must merge to the trunk), coordinate with these tools: mad_classify tells you whether a path needs coordination; mad_claim takes it so other agents see it as held. Forkable paths need no claim — edit freely. mad_status and mad_locks show current contention. You do NOT merge your own branch: just commit your work on your boundary branch — convergence to the trunk is handled outside the session (by `mad-trellis integrate` / the lead). The substrate guarantees safety regardless; these tools just help you avoid wasted work from conflicting edits."
 
-const builderGuidance = standingGuidance + " Once your work is committed, call mad_request_integration. The verdict will arrive as a [mad-substrate] nudge (in your terminal or on a tool result), and mad_integration_status reads the feedback."
+const builderGuidance = standingGuidance + " Once your work is committed, call mad_request_integration. The verdict will arrive as a [mad-trellis] nudge (in your terminal or on a tool result), and mad_integration_status reads the feedback."
 
-const integratorGuidance = "You are the mad-substrate trunk-side reviewer. On start, ALWAYS drain mad_integration_pending; state is truth. Loop: claim a request, review the branch diff, then call mad_integration_approve or mad_integration_reject with concrete feedback, and re-check mad_integration_pending before going idle. [mad-substrate] lines appearing in the terminal or appended to tool results are wake-up signals; respond by re-running mad_integration_pending. mad_integration_approve merges into the CURRENT branch and honors the optional MAD_INTEGRATOR_GATE shell gate."
+const integratorGuidance = "You are the mad-trellis trunk-side reviewer. On start, ALWAYS drain mad_integration_pending; state is truth. Loop: claim a request, review the branch diff, then call mad_integration_approve or mad_integration_reject with concrete feedback, and re-check mad_integration_pending before going idle. [mad-trellis] lines appearing in the terminal or appended to tool results are wake-up signals; respond by re-running mad_integration_pending. mad_integration_approve merges into the CURRENT branch and honors the optional MAD_INTEGRATOR_GATE shell gate."
 
 // failSoftNote is the advisory returned (as isError) when the daemon is
 // unreachable even after a re-Dial. Inv 13: a governed session must be no more
 // fragile than a bare one — so we tell the agent it is SAFE to proceed.
-const failSoftNote = "mad-substrate daemon unreachable — proceeding is safe (your worktree is isolated); coordination is just unavailable right now."
+const failSoftNote = "mad-trellis daemon unreachable — proceeding is safe (your worktree is isolated); coordination is just unavailable right now."
 
-const noIntegratorAdvisory = "note: no integrator is currently running — your request is queued; ask your operator to run 'mad-substrate integrator start'."
+const noIntegratorAdvisory = "note: no integrator is currently running — your request is queued; ask your operator to run 'mad-trellis integrator start'."
 
 // toolDescriptor is one entry of tools/list. InputSchema is a raw JSON object so
 // each tool can pin its exact schema (additionalProperties:false etc.) without
@@ -68,7 +68,7 @@ var rejectSchema = json.RawMessage(`{"type":"object","properties":{"id":{"type":
 var builderTools = []toolDescriptor{
 	{
 		Name:        "mad_locks",
-		Description: "List every lease (lock) currently held across all agents governed by the mad-substrate daemon — who holds which shared/convergent resource. Use it to see contention before editing.",
+		Description: "List every lease (lock) currently held across all agents governed by the mad-trellis daemon — who holds which shared/convergent resource. Use it to see contention before editing.",
 		InputSchema: emptySchema,
 	},
 	{
@@ -129,7 +129,7 @@ var integratorTools = []toolDescriptor{
 	},
 	{
 		Name:        "mad_locks",
-		Description: "List every lease (lock) currently held across all agents governed by the mad-substrate daemon — situational awareness while reviewing.",
+		Description: "List every lease (lock) currently held across all agents governed by the mad-trellis daemon — situational awareness while reviewing.",
 		InputSchema: emptySchema,
 	},
 	{
@@ -187,7 +187,7 @@ func (s *server) handleInitialize(req *rpcRequest) rpcResponse {
 	return resultResponse(req.ID, initializeResult{
 		ProtocolVersion: pv,
 		Capabilities:    map[string]any{"tools": map[string]any{}},
-		ServerInfo:      serverInfo{Name: "mad-substrate", Version: s.version},
+		ServerInfo:      serverInfo{Name: "mad-trellis", Version: s.version},
 		Instructions:    s.initializeInstructions(),
 	})
 }
@@ -266,17 +266,17 @@ func renderIntegrationNudge(kind, branch string, count int) (string, bool) {
 		if count < 1 {
 			count = 1
 		}
-		return fmt.Sprintf("[mad-substrate] %d integration request(s) awaiting review — run mad_integration_pending and process them.", count), true
+		return fmt.Sprintf("[mad-trellis] %d integration request(s) awaiting review — run mad_integration_pending and process them.", count), true
 	case "integration.verdict":
 		if strings.TrimSpace(branch) == "" {
 			return "", false
 		}
-		return fmt.Sprintf("[mad-substrate] your integration request on %s has a verdict — run mad_integration_status.", branch), true
+		return fmt.Sprintf("[mad-trellis] your integration request on %s has a verdict — run mad_integration_status.", branch), true
 	case "integration.claimed":
 		if strings.TrimSpace(branch) == "" {
 			return "", false
 		}
-		return fmt.Sprintf("[mad-substrate] your integration request on %s was claimed for review.", branch), true
+		return fmt.Sprintf("[mad-trellis] your integration request on %s was claimed for review.", branch), true
 	default:
 		return "", false
 	}
@@ -344,7 +344,7 @@ func (s *server) withBackend(fn func(be backend) (toolResult, error)) toolResult
 	if !coopclient.IsTransport(err) {
 		// A real daemon VERDICT (authz/conflict/etc.) is not a transport blip;
 		// surface it as a tool error rather than masking it with the note.
-		return textResult(fmt.Sprintf("mad-substrate: %s", err.Error()), true)
+		return textResult(fmt.Sprintf("mad-trellis: %s", err.Error()), true)
 	}
 	// One re-Dial on a transport failure, then retry exactly once.
 	be = s.redial()
@@ -356,7 +356,7 @@ func (s *server) withBackend(fn func(be backend) (toolResult, error)) toolResult
 		if coopclient.IsTransport(err) {
 			return textResult(failSoftNote, true)
 		}
-		return textResult(fmt.Sprintf("mad-substrate: %s", err.Error()), true)
+		return textResult(fmt.Sprintf("mad-trellis: %s", err.Error()), true)
 	}
 	return res
 }
@@ -776,7 +776,7 @@ func (s *server) ownBranch() (string, error) {
 		return "", fmt.Errorf("HEAD is detached — checkout your boundary branch (nm/...) before requesting integration")
 	}
 	if !strings.HasPrefix(branch, "nm/") {
-		return "", fmt.Errorf("current branch %q is not a mad-substrate boundary branch (nm/...); only boundary branches can be integrated", branch)
+		return "", fmt.Errorf("current branch %q is not a mad-trellis boundary branch (nm/...); only boundary branches can be integrated", branch)
 	}
 	return branch, nil
 }

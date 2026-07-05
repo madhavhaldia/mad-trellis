@@ -15,15 +15,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/madhavhaldia/mad-substrate/internal/daemon"
-	"github.com/madhavhaldia/mad-substrate/internal/integration"
-	"github.com/madhavhaldia/mad-substrate/internal/integrator"
-	"github.com/madhavhaldia/mad-substrate/internal/lease"
-	"github.com/madhavhaldia/mad-substrate/internal/liveness"
-	"github.com/madhavhaldia/mad-substrate/internal/manifest"
-	"github.com/madhavhaldia/mad-substrate/internal/session"
-	"github.com/madhavhaldia/mad-substrate/internal/singular"
-	"github.com/madhavhaldia/mad-substrate/internal/substrate"
+	"github.com/madhavhaldia/mad-trellis/internal/daemon"
+	"github.com/madhavhaldia/mad-trellis/internal/integration"
+	"github.com/madhavhaldia/mad-trellis/internal/integrator"
+	"github.com/madhavhaldia/mad-trellis/internal/lease"
+	"github.com/madhavhaldia/mad-trellis/internal/liveness"
+	"github.com/madhavhaldia/mad-trellis/internal/manifest"
+	"github.com/madhavhaldia/mad-trellis/internal/session"
+	"github.com/madhavhaldia/mad-trellis/internal/singular"
+	"github.com/madhavhaldia/mad-trellis/internal/substrate"
 )
 
 // Config configures the composed daemon.
@@ -345,7 +345,7 @@ func (a integClaimReclaimer) ReclaimStaleClaims(isDead func(session string) bool
 // not grow without bound. Not death-gated and never touches a `claimed` row.
 func (a integClaimReclaimer) GCStale() (int, error) { return a.ig.GCStale() }
 
-const integratorPresenceKey = "mad-substrate:integrator:v1"
+const integratorPresenceKey = "mad-trellis:integrator:v1"
 
 func holdsIntegratorPresence(l *lease.Ledger, session string) bool {
 	holders, err := l.ListHolders()

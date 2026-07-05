@@ -47,7 +47,7 @@ func (systemClock) Now() time.Time { return time.Now() }
 
 // store is the integrator's OWN durable state — separate from the lease ledger
 // (the integrator never imports the lease store; the only cross-project store
-// edge in mad-substrate is the audit table, written behind the daemon's method).
+// edge in mad-trellis is the audit table, written behind the daemon's method).
 // Single-writer discipline (one connection) gives atomic CAS transitions without
 // SQLITE_BUSY, mirroring the lease ledger.
 type store struct {
