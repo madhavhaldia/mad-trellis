@@ -14,17 +14,15 @@ const DefaultInterval = 1500 * time.Millisecond
 // DefaultAuditLimit bounds the audit tail the model requests.
 const DefaultAuditLimit = 50
 
-// panelID identifies the focusable panels (navigation only — focus changes
-// nothing governed; it just chooses which panel scrolls).
+// panelID identifies the focusable regions (navigation only — focus changes
+// nothing governed; it just chooses which region scrolls).
 type panelID int
 
 const (
-	panelTrunk panelID = iota
-	panelPending
-	panelReview
-	panelLeases
-	panelAudit
-	panelCount // sentinel: number of panels
+	panelFeed panelID = iota
+	panelQueue
+	panelStrip
+	panelCount // sentinel: number of regions
 )
 
 // snapshotMsg carries a freshly fetched Snapshot into Update.
@@ -34,7 +32,7 @@ type snapshotMsg struct{ snap Snapshot }
 type tickMsg struct{}
 
 // Model is the read-only watch TUI state (Elm architecture). It holds the LATEST
-// snapshot, the focused panel, and per-panel scroll offsets. It never holds an
+// snapshot, the focused region, and per-region scroll offsets. It never holds an
 // action affordance: keybindings are STRICTLY navigational. The fetch func is
 // injected so the model is testable without a live daemon.
 type Model struct {
@@ -44,8 +42,9 @@ type Model struct {
 	snap    Snapshot
 	hasSnap bool // false until the first poll lands (pre-first-fetch render)
 
-	focus   panelID
-	offsets [panelCount]int
+	focus        panelID
+	offsets      [panelCount]int
+	userScrolled [panelCount]bool
 
 	width, height int
 	quitting      bool
@@ -57,7 +56,7 @@ func NewModel(fetch Fetcher, interval time.Duration) Model {
 	if interval <= 0 {
 		interval = DefaultInterval
 	}
-	return Model{fetch: fetch, interval: interval, focus: panelTrunk}
+	return Model{fetch: fetch, interval: interval, focus: panelFeed}
 }
 
 // Init kicks off the first fetch immediately, then schedules the poll loop.
@@ -90,6 +89,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+		m.clampOffsets()
 		return m, nil
 
 	case snapshotMsg:
@@ -104,6 +104,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		return m.handleKey(msg)
+
+	case tea.MouseMsg:
+		return m.handleMouse(msg)
 	}
 	return m, nil
 }
@@ -123,27 +126,44 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "down", "j":
-		m.offsets[m.focus]++
-		m.clampOffsets()
+		m.scrollFocused(1)
 		return m, nil
 	case "up", "k":
-		if m.offsets[m.focus] > 0 {
-			m.offsets[m.focus]--
-		}
+		m.scrollFocused(-1)
 		return m, nil
 	}
 	// Unrecognized key: NO-OP. (No action affordance exists.)
 	return m, nil
 }
 
+func (m Model) handleMouse(msg tea.MouseMsg) (tea.Model, tea.Cmd) {
+	switch msg.Button {
+	case tea.MouseButtonWheelUp:
+		m.scrollFocused(-1)
+	case tea.MouseButtonWheelDown:
+		m.scrollFocused(1)
+	}
+	return m, nil
+}
+
+func (m *Model) scrollFocused(delta int) {
+	if m.focus == panelStrip {
+		return
+	}
+	m.userScrolled[m.focus] = true
+	m.offsets[m.focus] += delta
+	m.clampOffsets()
+}
+
 // clampOffsets keeps each scroll offset within its panel's line count so
 // scrolling can never index past the data.
 func (m *Model) clampOffsets() {
 	lines := m.panelLineCounts()
+	budgets := m.panelContentBudgets()
 	for p := panelID(0); p < panelCount; p++ {
-		max := lines[p] - 1
-		if max < 0 {
-			max = 0
+		max := maxScrollOffset(lines[p], budgets[p])
+		if p == panelFeed && !m.userScrolled[p] {
+			m.offsets[p] = max
 		}
 		if m.offsets[p] > max {
 			m.offsets[p] = max

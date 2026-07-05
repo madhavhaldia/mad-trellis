@@ -44,7 +44,7 @@ func watchCmd() *cobra.Command {
 
 			fetch := watch.NewClientFetcher(cl, watch.DefaultAuditLimit)
 			model := watch.NewModel(fetch, interval)
-			prog := tea.NewProgram(model, tea.WithAltScreen())
+			prog := tea.NewProgram(model, tea.WithAltScreen(), tea.WithMouseCellMotion())
 			_, err = prog.Run()
 			return err
 		},
