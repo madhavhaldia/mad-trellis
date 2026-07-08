@@ -22,11 +22,11 @@ func runAlias(t *testing.T, args ...string) (string, error) {
 
 func TestAliasCreatesSymlinkAlongsideBinary(t *testing.T) {
 	dir := t.TempDir()
-	out, err := runAlias(t, "ms", "--dir", dir)
+	out, err := runAlias(t, "mt", "--dir", dir)
 	if err != nil {
 		t.Fatalf("alias: %v\n%s", err, out)
 	}
-	link := filepath.Join(dir, "ms")
+	link := filepath.Join(dir, "mt")
 	fi, err := os.Lstat(link)
 	if err != nil {
 		t.Fatalf("expected symlink at %s: %v", link, err)
@@ -49,23 +49,23 @@ func TestAliasCreatesSymlinkAlongsideBinary(t *testing.T) {
 	}
 }
 
-func TestAliasDefaultsToMS(t *testing.T) {
+func TestAliasDefaultsToMT(t *testing.T) {
 	dir := t.TempDir()
 	if _, err := runAlias(t, "--dir", dir); err != nil {
 		t.Fatalf("alias (default name): %v", err)
 	}
-	if _, err := os.Lstat(filepath.Join(dir, "ms")); err != nil {
-		t.Fatalf("default alias name should be ms: %v", err)
+	if _, err := os.Lstat(filepath.Join(dir, "mt")); err != nil {
+		t.Fatalf("default alias name should be mt: %v", err)
 	}
 }
 
 func TestAliasIsIdempotent(t *testing.T) {
 	dir := t.TempDir()
-	if _, err := runAlias(t, "ms", "--dir", dir); err != nil {
+	if _, err := runAlias(t, "mt", "--dir", dir); err != nil {
 		t.Fatalf("first install: %v", err)
 	}
 	// A second run must replace the stale symlink, not error out.
-	if _, err := runAlias(t, "ms", "--dir", dir); err != nil {
+	if _, err := runAlias(t, "mt", "--dir", dir); err != nil {
 		t.Fatalf("second install (idempotency): %v", err)
 	}
 }
@@ -88,16 +88,16 @@ func TestAliasRejectsShimNames(t *testing.T) {
 
 func TestAliasRefusesToClobberRealFile(t *testing.T) {
 	dir := t.TempDir()
-	real := filepath.Join(dir, "ms")
+	real := filepath.Join(dir, "mt")
 	if err := os.WriteFile(real, []byte("not a symlink"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	out, err := runAlias(t, "ms", "--dir", dir)
+	out, err := runAlias(t, "mt", "--dir", dir)
 	if err == nil {
 		t.Fatalf("should refuse to clobber a real file without --force: %s", out)
 	}
 	// --force overrides.
-	if _, ferr := runAlias(t, "ms", "--dir", dir, "--force"); ferr != nil {
+	if _, ferr := runAlias(t, "mt", "--dir", dir, "--force"); ferr != nil {
 		t.Fatalf("--force should replace the file: %v", ferr)
 	}
 	fi, _ := os.Lstat(real)
@@ -107,11 +107,11 @@ func TestAliasRefusesToClobberRealFile(t *testing.T) {
 }
 
 func TestAliasPrintEmitsShellLine(t *testing.T) {
-	out, err := runAlias(t, "ms", "--print")
+	out, err := runAlias(t, "mt", "--print")
 	if err != nil {
 		t.Fatalf("alias --print: %v", err)
 	}
-	if !strings.HasPrefix(out, "alias ms=") {
+	if !strings.HasPrefix(out, "alias mt=") {
 		t.Fatalf("--print should emit a shell alias line, got: %q", out)
 	}
 	// --print must not write any file.

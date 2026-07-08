@@ -116,7 +116,7 @@ Grab the latest binary for your platform (darwin/arm64, linux/amd64, linux/arm64
 # example: Apple silicon
 curl -fsSLo mad-trellis https://github.com/madhavhaldia/mad-trellis/releases/latest/download/mad-trellis
 chmod +x mad-trellis && mv mad-trellis ~/.local/bin/   # anywhere on your PATH
-mad-trellis alias   # optional: symlink the short `ms` name next to it
+mad-trellis alias   # optional: symlink the short `mt` name next to it
 ```
 
 ### `go install`
@@ -144,13 +144,13 @@ mad-trellis doctor      # verify the install (paths, git floor, version pins)
 `make install` is also how you upgrade after pulling. There is no runtime dependency beyond git;
 SQLite is embedded.
 
-### Short alias (`ms`)
+### Short alias (`mt`)
 
-Typing `mad-trellis` every time gets old. `make install` also drops an `ms` symlink alongside the
-binary, so `ms launch -- claude` just works:
+Typing `mad-trellis` every time gets old. `make install` also drops an `mt` symlink alongside the
+binary, so `mt launch -- claude` just works:
 
 ```sh
-ms launch -- claude        # ms == mad-trellis
+mt launch -- claude        # mt == mad-trellis
 make install ALIAS=sub     # prefer a different name…
 make install ALIAS=        # …or no alias at all
 ```
@@ -158,8 +158,8 @@ make install ALIAS=        # …or no alias at all
 Installed the release binary directly (not via `make install`)? Create the alias yourself:
 
 ```sh
-mad-trellis alias              # symlinks `ms` next to the binary
-mad-trellis alias --print      # or print a shell-rc line: alias ms='…/mad-trellis'
+mad-trellis alias              # symlinks `mt` next to the binary
+mad-trellis alias --print      # or print a shell-rc line: alias mt='…/mad-trellis'
 ```
 
 ## Quickstart

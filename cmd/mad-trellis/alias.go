@@ -10,10 +10,13 @@ import (
 	"github.com/madhavhaldia/mad-trellis/internal/launcher"
 )
 
-// defaultAliasName is the short convenience name for the binary. `ms` = the
-// initials of mad-trellis; it collides with nothing on a typical macOS/Linux
-// PATH and reads cleanly (`ms launch -- claude`).
-const defaultAliasName = "ms"
+// defaultAliasName is the short convenience name for the binary. `mt` = the
+// initials of mad-trellis and reads cleanly (`mt launch -- claude`). (A
+// historic `mt` magnetic-tape utility exists on some Linux distros; the
+// symlink lives in the install BINDIR, which precedes /usr/bin on a typical
+// PATH — and `make install ALIAS=` / `mad-trellis alias <name>` renames or
+// disables it.)
+const defaultAliasName = "mt"
 
 // aliasCmd creates a short convenience alias for the binary so users don't type
 // `mad-trellis` every time. It defaults to a SYMLINK next to the installed
@@ -22,7 +25,7 @@ const defaultAliasName = "ms"
 //
 // The alias name must NOT be an agent shim name (claude/codex) — those argv[0]
 // names are intercepted by the transparent launcher (Inv 13) and would NOT run
-// the normal CLI — nor "mad-trellis" itself. `ms`/`sub`/etc. are not supported
+// the normal CLI — nor "mad-trellis" itself. `mt`/`sub`/etc. are not supported
 // agents, so they fall straight through AgentFromArgv0 to the cobra CLI.
 func aliasCmd() *cobra.Command {
 	var dir string
@@ -30,8 +33,8 @@ func aliasCmd() *cobra.Command {
 	var force bool
 	cmd := &cobra.Command{
 		Use:   "alias [name]",
-		Short: "Create a short convenience alias for the binary (default: ms)",
-		Long: "Create a short convenience alias so you can type `ms` instead of `mad-trellis`.\n" +
+		Short: "Create a short convenience alias for the binary (default: mt)",
+		Long: "Create a short convenience alias so you can type `mt` instead of `mad-trellis`.\n" +
 			"By default this writes a symlink next to the installed binary (works in every\n" +
 			"shell and in scripts). Use --print to emit a shell-rc `alias` line instead.",
 		Args: cobra.MaximumNArgs(1),
@@ -47,7 +50,7 @@ func aliasCmd() *cobra.Command {
 			// a `claude`/`codex` argv[0] is routed through the governed launcher and
 			// would never run the CLI, and `mad-trellis` is the binary's own name.
 			if name == "mad-trellis" || launcher.IsSupportedAgent(name) {
-				return fmt.Errorf("%q is reserved (agent shim names and \"mad-trellis\" cannot be aliases); pick e.g. ms or sub", name)
+				return fmt.Errorf("%q is reserved (agent shim names and \"mad-trellis\" cannot be aliases); pick e.g. mt or sub", name)
 			}
 
 			self, err := os.Executable()

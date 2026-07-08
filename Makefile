@@ -22,9 +22,9 @@ PREFIX ?= $(HOME)/.local
 BINDIR ?= $(PREFIX)/bin
 
 # ALIAS is the short convenience name symlinked alongside the binary by
-# `make install` (so you can type `ms` instead of `mad-trellis`). Disable it
+# `make install` (so you can type `mt` instead of `mad-trellis`). Disable it
 # with `make install ALIAS=`; rename it with e.g. `make install ALIAS=sub`.
-ALIAS ?= ms
+ALIAS ?= mt
 
 .PHONY: build build-linux build-relay coop-assets go-preflight install uninstall test conform doctor linkage smoke release clean
 

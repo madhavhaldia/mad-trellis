@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Default short alias renamed `ms` -> `mt`** (the initials of mad-trellis —
+  `ms` dated from the mad-substrate name): `make install` now symlinks `mt`,
+  and `mad-trellis alias` defaults to `mt`. An existing `ms` symlink keeps
+  working (it points at the binary) but is no longer installed or removed by
+  make targets — delete it manually if unwanted, or keep any name with
+  `make install ALIAS=<name>`.
+
 ## [0.2.0] - 2026-07-08
 
 First release under the **mad-trellis** name (v0.1.0 shipped as mad-substrate).
