@@ -108,7 +108,16 @@ when a holder dies, and admitting only validated merges to the trunk is the whol
 
 ### Prebuilt binaries (recommended)
 
-> **GitHub Releases — coming with v0.1.0.** Until then, use `go install` or build from source.
+Grab the latest binary for your platform (darwin/arm64, linux/amd64, linux/arm64) from
+**[GitHub Releases](https://github.com/madhavhaldia/mad-trellis/releases)** — checksums in
+`SHA256SUMS` alongside each release:
+
+```sh
+# example: Apple silicon
+curl -fsSLo mad-trellis https://github.com/madhavhaldia/mad-trellis/releases/latest/download/mad-trellis
+chmod +x mad-trellis && mv mad-trellis ~/.local/bin/   # anywhere on your PATH
+mad-trellis alias   # optional: symlink the short `ms` name next to it
+```
 
 ### `go install`
 
@@ -229,8 +238,8 @@ stays runnable on any host.
 trunk loop (see Advanced, below). The CLI, daemon, isolation grains, and the `conform` safety gate
 all work today.
 
-**Pre-1.0:** the `mad-trellis.json` manifest schema and some CLI flags may still change. Not yet
-published to a package registry — install via `go install` or from source (above).
+**Pre-1.0:** the `mad-trellis.json` manifest schema and some CLI flags may still change. Install
+via the prebuilt release binaries, `go install`, or from source (above).
 
 ## Advanced: the governed trunk loop (self-hosting)
 
@@ -290,6 +299,7 @@ truth. See **[docs/0007-event-nudges.md](./docs/0007-event-nudges.md)**.
 - **[docs/0002-stack.md](./docs/0002-stack.md)** — the pinned stack and dependency rationale.
 - **[docs/0003-project-breakdown.md](./docs/0003-project-breakdown.md)** — components and the invariant-clause ownership map.
 - **[docs/0004-build-brief.md](./docs/0004-build-brief.md)** — the original build plan.
+- **[docs/0008-death-oracle-and-salvage.md](./docs/0008-death-oracle-and-salvage.md)** — (proposed) the liveness redesign: suspension-aware death oracle, quarantine, salvage-before-destroy.
 
 ## Contributing
 

@@ -7,16 +7,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-08
+
+First release under the **mad-trellis** name (v0.1.0 shipped as mad-substrate).
+The headline is the **event-nudge plane**: daemon-authored wake-ups that close
+the integration review loop without polling — and without ever becoming an
+agent-to-agent message channel.
+
 ### Added
 
+- **Event plane for the integration review loop**: governed state transitions
+  (a request created, claimed, or given a verdict) now produce small,
+  daemon-authored, audience-scoped event rows (`integration.events`). Events are
+  payload-free wake-ups (id / kind / branch / timestamp only) — the durable
+  integration rows remain the source of truth. See
+  [docs/0007-event-nudges.md](./docs/0007-event-nudges.md).
+- **Nudge delivery**: `mad-trellis launch` and `integrator run` sessions receive
+  fixed-template nudge lines injected into the agent's PTY, with a politeness
+  guard that defers while user input is fresh; sessions not launched through the
+  PTY wrapper get the same nudges piggybacked onto MCP tool results.
+  `MAD_NUDGES=off` disables delivery (never the state machine).
+- **Integrator session support**: `mad-trellis integrator run` wraps an
+  integrator agent with the same PTY plumbing plus integrator-audience nudges
+  and a session keepalive; the MCP layer gained role-correct guidance and a
+  no-integrator advisory for builders whose requests have no one to review them.
 - `mad-trellis integrator stop`: stop the running integrator on this trunk and
   free its singleton presence lease. It finds the integrator via a pidfile the
   MCP server writes beside the ledger, verifies the pid is really an integrator
   (a reused pid is never signalled), and sends the SIGTERM the server handles by
   releasing its lease; `--force` escalates to SIGKILL.
+- **Conformance grew event-plane safety clauses** (with non-vacuous controls):
+  events are payload-free (field set pinned), branch-audience events are
+  isolated from strangers, no mesh/broadcast method exists on the contract, and
+  the Inv 13 nudge carve-out is proven fixed-template and daemon-authored.
+- `watch` redesigned around a height-budgeted, chat-shaped **coordination feed**
+  rendering the same governed history the event plane produces (read-only, as
+  ever).
+- ADR 0008 (PROPOSED): the liveness redesign — suspension-aware death oracle,
+  quarantine, and salvage-before-destroy
+  ([docs/0008](./docs/0008-death-oracle-and-salvage.md)).
+
+### Changed
+
+- **Project renamed from mad-substrate to mad-trellis**: the binary, the Go
+  module path (`github.com/madhavhaldia/mad-trellis`), the manifest filename
+  (`mad-trellis.json`), and the per-repo runtime root (`~/.mad-trellis/`). The
+  `ms` short alias is unchanged. Existing installs should `make install` (or
+  reinstall) under the new name; per-repo runtimes are re-created on first
+  launch.
 
 ### Fixed
 
+- **Nudges are now actually submitted in burst-detecting TUIs (Codex)**:
+  delivery used to be one PTY write of `body\r`, which paste-burst heuristics
+  treat as pasted text — the nudge landed in the composer and was never sent.
+  The body is now injected as an insert-text event (bracketed-paste aware,
+  tracked from the child's own output) and the submit as a temporally isolated
+  lone `\r` keypress, so delivery no longer depends on which agent sits behind
+  the PTY (Inv 10).
 - The integrator MCP server now traps **SIGHUP** (terminal-window close/hangup),
   so closing an integrator's terminal releases its presence lease immediately
   instead of stranding it until the 60s TTL lapsed (which made `integrator
@@ -60,5 +108,6 @@ guarantees safe parallelism so no agent can corrupt another agent or the trunk.
 - Reproducible release pipeline shipping darwin/arm64, linux/amd64, and linux/arm64
   binaries with checksums.
 
-[Unreleased]: https://github.com/madhavhaldia/mad-trellis/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/madhavhaldia/mad-trellis/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/madhavhaldia/mad-trellis/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/madhavhaldia/mad-trellis/releases/tag/v0.1.0
