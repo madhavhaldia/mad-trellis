@@ -134,15 +134,20 @@ func runPTYIOWithOptions(stdin io.Reader, stdout io.Writer, target ExecTarget, e
 	activity := &inputActivity{}
 	ptmxWriter := lockedWriter{mu: &ptmxMu, w: ptmx}
 	go func() { _, _ = io.Copy(ptmxWriter, activityReader{r: stdin, activity: activity}) }()
-	startNudgeLoop(ctx, lockedWriter{mu: &ptmxMu, w: ptmx}, activity, opts.Nudges)
+	// Nudges deliver through the injector (inject.go): body as a (bracketed-paste-
+	// aware) insert, then a temporally isolated \r submit — under the SAME ptmxMu
+	// as the stdin relay so injected input and user keystrokes never interleave.
+	paste := &pasteModeTracker{}
+	startNudgeLoop(ctx, &ptyInjector{mu: &ptmxMu, w: ptmx, paste: paste, delay: opts.Nudges.SubmitDelay}, activity, opts.Nudges)
 
 	// Drain the child's output. On the NORMAL path this returns when the child exits
 	// (the PTY master sees EOF), so it fully flushes stdout BEFORE we return — the
 	// transparency contract (no truncated transcript). We run it in a goroutine only
 	// so the DROP path can return without it (a wedged child never closes the PTY);
-	// the normal path still WAITS for it via outDone below.
+	// the normal path still WAITS for it via outDone below. The paste tracker tees
+	// off the SAME relay so the injector sees the child's bracketed-paste mode.
 	outDone := make(chan struct{})
-	go func() { _, _ = io.Copy(stdout, ptmx); close(outDone) }()
+	go func() { _, _ = io.Copy(stdout, io.TeeReader(ptmx, paste)); close(outDone) }()
 
 	// Wait for the child in the background so the drop path can return without it.
 	waitErr := make(chan error, 1)

@@ -30,6 +30,7 @@ func TestRunPTYIONudgeInjectsBranchVerdict(t *testing.T) {
 			Source:       source,
 			PollInterval: 10 * time.Millisecond,
 			QuietPeriod:  20 * time.Millisecond,
+			SubmitDelay:  20 * time.Millisecond,
 		}},
 	)
 	if err != nil {
@@ -66,6 +67,7 @@ func TestRunPTYIONudgePolitenessDefersWhileUserInputIsFresh(t *testing.T) {
 			PollInterval: 10 * time.Millisecond,
 			QuietPeriod:  180 * time.Millisecond,
 			RetryAfter:   15 * time.Millisecond,
+			SubmitDelay:  20 * time.Millisecond,
 		}},
 	)
 	elapsed := time.Since(start)

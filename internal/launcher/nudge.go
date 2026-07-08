@@ -34,6 +34,9 @@ type nudgeConfig struct {
 	PollInterval time.Duration
 	QuietPeriod  time.Duration
 	RetryAfter   time.Duration
+	// SubmitDelay isolates the submit keypress from the injected body (see
+	// inject.go). 0 -> defaultNudgeSubmitDelay.
+	SubmitDelay time.Duration
 }
 
 type ptyRunOptions struct {
@@ -106,7 +109,7 @@ func serializeConn(c Conn) Conn {
 	return &serializedConn{c: c}
 }
 
-func startNudgeLoop(ctx context.Context, w io.Writer, activity *inputActivity, cfg nudgeConfig) {
+func startNudgeLoop(ctx context.Context, inj lineInjector, activity *inputActivity, cfg nudgeConfig) {
 	if nudgesDisabledByEnv() || cfg.Source == nil {
 		return
 	}
@@ -116,7 +119,7 @@ func startNudgeLoop(ctx context.Context, w io.Writer, activity *inputActivity, c
 	}
 
 	state := &nudgeDeliveryState{
-		w:          w,
+		inj:        inj,
 		activity:   activity,
 		cfg:        cfg,
 		quiet:      durationOr(cfg.QuietPeriod, defaultNudgeQuietPeriod),
@@ -150,7 +153,7 @@ type nudgeDeliveryState struct {
 	pending    []nudgeEvent
 	delivering bool
 
-	w          io.Writer
+	inj        lineInjector
 	activity   *inputActivity
 	cfg        nudgeConfig
 	quiet      time.Duration
@@ -190,7 +193,7 @@ func (s *nudgeDeliveryState) deliver(ctx context.Context) {
 		if !ok {
 			continue
 		}
-		if _, err := s.w.Write([]byte(text)); err == nil && s.cfg.Audit != nil {
+		if err := s.inj.Inject(text); err == nil && s.cfg.Audit != nil {
 			s.cfg.Audit(ctx, s.cfg.Audience, batch)
 		}
 	}
@@ -219,10 +222,15 @@ func (s *nudgeDeliveryState) waitQuiet(ctx context.Context) bool {
 	}
 }
 
+// buildNudgeText assembles the fixed-template body for one delivery batch. It is
+// PURE TEXT: no carriage returns / submit bytes — how a body is inserted and
+// submitted is the injector's job (inject.go), never the template's. Multi-kind
+// batches join with \n, which the injector delivers inside one paste so the
+// whole batch rides a single submit.
 func buildNudgeText(audience, branch string, events []nudgeEvent) (string, bool) {
 	if audience == "integrator" {
 		line := "[mad-trellis] " + strconv.Itoa(len(events)) + " integration request(s) awaiting review — run mad_integration_pending and process them."
-		return line + "\r", true
+		return line, true
 	}
 
 	if branch == "" && len(events) > 0 {
@@ -241,7 +249,7 @@ func buildNudgeText(audience, branch string, events []nudgeEvent) (string, bool)
 	if len(lines) == 0 {
 		return "", false
 	}
-	return strings.Join(lines, "\r") + "\r", true
+	return strings.Join(lines, "\n"), true
 }
 
 func uniqueNudgeKinds(events []nudgeEvent) []string {
