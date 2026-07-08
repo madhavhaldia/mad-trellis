@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-07-08
+
 ### Changed
 
 - **Default short alias renamed `ms` -> `mt`** (the initials of mad-trellis —
@@ -117,6 +119,7 @@ guarantees safe parallelism so no agent can corrupt another agent or the trunk.
 - Reproducible release pipeline shipping darwin/arm64, linux/amd64, and linux/arm64
   binaries with checksums.
 
-[Unreleased]: https://github.com/madhavhaldia/mad-trellis/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/madhavhaldia/mad-trellis/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/madhavhaldia/mad-trellis/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/madhavhaldia/mad-trellis/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/madhavhaldia/mad-trellis/releases/tag/v0.1.0
