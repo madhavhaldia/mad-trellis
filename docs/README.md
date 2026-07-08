@@ -2,7 +2,7 @@
 
 This folder mixes two very different kinds of document. Read the right one for your goal.
 
-> **If you are here to *use* mad-trellis, do not start in the numbered `0001`–`0007` files.**
+> **If you are here to *use* mad-trellis, do not start in the numbered `0001`–`0008` files.**
 > Those are **design-history records** (architecture decision records), not user guides. In
 > particular [`0004-build-brief.md`](./0004-build-brief.md) is a *build-order work plan* for the
 > agent that originally constructed the project — following it as a how-to will only confuse you.
@@ -51,6 +51,10 @@ intent and rationale, not to learn the workflow.
 - **[0007 — Event nudges for the integration review loop](./0007-event-nudges.md)** — why
   daemon-authored wake-ups exist, how launcher/MCP delivery works, and why nudges never become
   agent-authored messages or task dispatch.
+- **[0008 — The death oracle, quarantine, and salvage-before-destroy](./0008-death-oracle-and-salvage.md)**
+  — (PROPOSED) the liveness redesign after the 2026-07-05 sleep/dark-wake false-death incident:
+  suspension-aware lease clock, connection reality as a destruction veto, resurrectable sessions,
+  and two-phase reclaim where work is salvaged into a git ref before anything is ever removed.
 
 ---
 
